@@ -21,7 +21,6 @@ class ImageDataCapturerTimedV2(octoprint.plugin.EventHandlerPlugin):
         self._logger.info("ImageDataCapturerTimedV2 Plugin started!")
         self._timer = None
         self._image_count = 0
-        self._batch_count = 0
         self.current_parameters = {
             'lateral_speed': 100
         } # initialize with 100% default
@@ -29,7 +28,6 @@ class ImageDataCapturerTimedV2(octoprint.plugin.EventHandlerPlugin):
     def on_event(self, event, payload):
         if event == Events.CONNECTED:
             self._image_count = 0  # Reset the image counter on each connection
-            self._batch_count = 0  # Reset the batch counter
             self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz)
     
     def start_timer(self, interval):
@@ -37,34 +35,37 @@ class ImageDataCapturerTimedV2(octoprint.plugin.EventHandlerPlugin):
         self._timer.start()
 
     def snapshot_sequence(self):
+        self._logger.info(f"Snapshot sequence triggered, image count: {self._image_count}")
+
         if self._image_count >= 5:
-            self._image_count = 0  # Reset image counter for new batch
-            self._batch_count += 1
-            self.resample_and_send_parameters()  # Resample parameters for new batch
+            self._logger.info("Captured 5 images; stopping timer and resampling parameters.")
+            self._timer.cancel()
+            # self.resample_and_send_parameters()  # Resample parameters for new batch
+            return
         
-        # Step 1: Capture the temperatures
         temps = self.capture_temperatures()
 
-        # Step 2: Only if temperatures are successfully captured, proceed to capture the image
         if temps:
-            image_name = f"batch-{self._batch_count}_image-{self._image_count}.jpg"
+            image_name = f"image-{self._image_count}.jpg"
             image_path = self.capture_image(image_name)
             
             if image_path:
-                # Bundle data into a dictionary and pass to log_snapshot
                 snapshot_data = {
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],  # High-precision timestamp
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
                     "image_name": image_name,
                     "image_path": image_path,
                     "target_hotend": temps['target_hotend'],
                     "hotend": temps['hotend'],
                     "target_bed": temps['target_bed'],
                     "bed": temps['bed'],
-                    # Include current parameters for the batch
                     "lateral_speed": self.current_parameters.get('lateral_speed'),
                 }
                 self.log_snapshot(snapshot_data)
-                self._image_count += 1
+                self._image_count += 1  # Increment after a successful log
+                self._logger.info(f"Image {self._image_count} captured and logged.")
+            else:
+                self._logger.error("Failed to capture image; skipping log.")
+
 
     def resample_and_send_parameters(self):
         try:
@@ -74,6 +75,9 @@ class ImageDataCapturerTimedV2(octoprint.plugin.EventHandlerPlugin):
             # Send the new lateral speed command to the printer
             self._printer.commands(f"M220 S{self.current_parameters['lateral_speed']}")
             self._logger.info(f"Lateral speed percentage set to: {self.current_parameters['lateral_speed']}%.")
+            self._printer.commands("G28")
+            self._logger.info("G28 Homing Done to confirm lateral speed has been changed")
+            
         except Exception as e:
             self._logger.error(f"Error setting new parameters: {e}")
 

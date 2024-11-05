@@ -4,35 +4,54 @@ from __future__ import absolute_import
 from datetime import datetime
 import os
 import requests
+import random
 import csv
 import octoprint.plugin
 from octoprint.events import Events
 from octoprint.util import RepeatedTimer
 
-__plugin_name__ = "ImageDataCapturerTimed"
+__plugin_name__ = "ImageDataCapturerTimedInc"
 __plugin_version__ = "1.1.0"
 __plugin_description__ = "A plugin to capture an image upon printer connection and log temperature details."
 __plugin_pythoncompat__ = ">=3.7,<4" 
 
-class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
+class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
 
     def on_after_startup(self):
-        self._logger.info("ImageCapturerTimed Plugin started!")
+        self._logger.info("ImageDataCapturerTimedInc Plugin started!")
         self._timer = None
         self._image_count = 0
+        self.current_parameters = None
 
     def on_event(self, event, payload):
-        if event == Events.CONNECTED:
+        if event == Events.PRINT_STARTED:
+            self.current_parameters = {
+                'lateral_speed': 100
+            } # initialize with 100% default
             self._image_count = 0  # Reset the image counter on each connection
             self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz)
+
+        elif event == Events.PRINT_RESUMED:
+            self._image_count = 0
+            self.start_timer(0.4)
     
     def start_timer(self, interval):
         self._timer = RepeatedTimer(interval, self.snapshot_sequence)
         self._timer.start()
 
+    def pause_print(self):
+        try:
+            self._printer.commands("M25")  # Use M25 to pause the print
+            self._logger.info("Print paused successfully.")
+        except Exception as e:
+            self._logger.error(f"Error pausing the print: {e}")
+
     def snapshot_sequence(self):
-        if self._image_count >= 5:
-            self._timer.cancel()  # Stop the timer once 5 images are captured
+        if self._image_count >= 10:
+            self.pause_print()
+            self._logger.info("Captured 10 images; stopping timer and resampling parameters.")
+            self._timer.cancel()  # Stop the timer once 10 images are captured
+            self.resample_and_send_parameters()
             return
 
         # Step 1: Capture the temperatures
@@ -52,10 +71,25 @@ class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
                     "target_hotend": temps['target_hotend'],
                     "hotend": temps['hotend'],
                     "target_bed": temps['target_bed'],
-                    "bed": temps['bed']
+                    "bed": temps['bed'],
+                    "lateral_speed": self.current_parameters['lateral_speed'],
+
                 }
                 self.log_snapshot(snapshot_data)
                 self._image_count += 1
+                self._logger.info(f"read lateral speed: {self.current_parameters['lateral_speed']}")
+
+    def resample_and_send_parameters(self):
+        try:
+            # Step 4.1: Resample each parameter from specified ranges
+            self.current_parameters['lateral_speed'] = random.uniform(20, 200)
+
+            # Send the new lateral speed command to the printer
+            self._printer.commands(f"M220 S{self.current_parameters['lateral_speed']}")
+            self._logger.info(f"Lateral speed percentage set to: {self.current_parameters['lateral_speed']}%.")
+            
+        except Exception as e:
+            self._logger.error(f"Error setting new parameters: {e}")
 
     def capture_temperatures(self):
         try:
@@ -102,7 +136,7 @@ class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
             return None
 
     def log_snapshot(self, snapshot_data):
-        log_file = "/media/sdcard/snapshots/print_log_full.csv"
+        log_file = "/media/sdcard/snapshots/print_log_full_inc.csv"
         log_exists = os.path.exists(log_file)
 
         try:
@@ -111,7 +145,7 @@ class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
                 writer = csv.writer(file)
                 if not log_exists:
                     # If the log file doesn't exist, write the header first
-                    writer.writerow(["Timestamp", "Image Name", "Image Path", "Target Hotend", "Hotend", "Target Bed", "Bed"])
+                    writer.writerow(["Timestamp", "Image Name", "Image Path", "Target Hotend", "Hotend", "Target Bed", "Bed", "Lateral Speed"])
                     self._logger.info("Created new log file with headers.")
                 
                 # Log the data from the dictionary
@@ -122,10 +156,11 @@ class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
                     snapshot_data['target_hotend'], 
                     snapshot_data['hotend'],
                     snapshot_data['target_bed'],
-                    snapshot_data['bed']
+                    snapshot_data['bed'],
+                    snapshot_data['lateral_speed']
                 ])
-                self._logger.info(f"Logged: {snapshot_data['timestamp']}, {snapshot_data['image_name']}, {snapshot_data['target_hotend']}, {snapshot_data['hotend']}")
+                self._logger.info(f"Logged: {snapshot_data['timestamp']}, {snapshot_data['image_name']}, {snapshot_data['hotend']}, {snapshot_data['lateral_speed']}")
         except IOError as e:
             self._logger.error(f"Error logging snapshot to {log_file}: {e}")
 
-__plugin_implementation__ = ImageDataCapturerTimed()
+__plugin_implementation__ = ImageDataCapturerTimedInc()
