@@ -20,38 +20,47 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
     def on_after_startup(self):
         self._logger.info("ImageDataCapturerTimedInc Plugin started!")
         self._timer = None
-        self._image_count = 0
+        self._total_image_count = 0
+        self._batch_image_count = 0
         self.current_parameters = None
 
     def on_event(self, event, payload):
         if event == Events.PRINT_STARTED:
             self.current_parameters = {
-                'lateral_speed': 100
+                'lateral_speed': 100 # start low to see difference
             } # initialize with 100% default
-            self._image_count = 0  # Reset the image counter on each connection
+            self._total_image_count = 0  # Reset the image counters on each connection
+            self._batch_image_count = 0
             self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz)
-
-        elif event == Events.PRINT_RESUMED:
-            self._image_count = 0
-            self.start_timer(0.4)
     
     def start_timer(self, interval):
         self._timer = RepeatedTimer(interval, self.snapshot_sequence)
         self._timer.start()
 
-    def pause_print(self):
-        try:
-            self._printer.commands("M25")  # Use M25 to pause the print
-            self._logger.info("Print paused successfully.")
-        except Exception as e:
-            self._logger.error(f"Error pausing the print: {e}")
+    # def pause_print(self):
+    #     try:
+    #         self._printer.commands("M25")  # Use M25 to pause the print
+    #         self._logger.info("Print paused successfully.")
+    #     except Exception as e:
+    #         self._logger.error(f"Error pausing the print: {e}")
+
+    # def resume_print(self):
+    #     try:
+    #         self._printer.commands("M24")  # Send M24 command to resume the print
+    #         self._logger.info("Print resumed successfully.")
+    #         self._batch_image_count = 0
+    #         self.start_timer(0.4)
+    #     except Exception as e:
+    #         self._logger.error(f"Error resuming the print: {e}")
 
     def snapshot_sequence(self):
         if self._image_count >= 10:
-            self.pause_print()
+            # self.pause_print()
             self._logger.info("Captured 10 images; stopping timer and resampling parameters.")
             self._timer.cancel()  # Stop the timer once 10 images are captured
-            self.resample_and_send_parameters()
+            # self.resample_and_send_parameters()
+            self.current_parameters['lateral_speed'] = 200  # test if speed increases
+            self.resume_print()
             return
 
         # Step 1: Capture the temperatures
