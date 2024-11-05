@@ -10,15 +10,15 @@ import octoprint.plugin
 from octoprint.events import Events
 from octoprint.util import RepeatedTimer
 
-__plugin_name__ = "ImageDataCapturerTimed"
+__plugin_name__ = "ImageDataCapturerTimedV2"
 __plugin_version__ = "1.1.0"
-__plugin_description__ = "A plugin to capture an image upon printer connection and log temperature details."
+__plugin_description__ = "Captures X images before resampling printing parameters and sending via Gcode"
 __plugin_pythoncompat__ = ">=3.7,<4" 
 
-class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
+class ImageDataCapturerTimedV2(octoprint.plugin.EventHandlerPlugin):
 
     def on_after_startup(self):
-        self._logger.info("ImageDataCapturerTimed Plugin started!")
+        self._logger.info("ImageDataCapturerTimedV2 Plugin started!")
         self._timer = None
         self._image_count = 0
         self._batch_count = 0
@@ -149,4 +149,4 @@ class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
         except IOError as e:
             self._logger.error(f"Error logging snapshot to {log_file}: {e}")
 
-__plugin_implementation__ = ImageDataCapturerTimed()
+__plugin_implementation__ = ImageDataCapturerTimedV2()
