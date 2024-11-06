@@ -23,14 +23,20 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
         self._total_image_count = 0
         self._batch_image_count = 0
         self.current_parameters = None
-
+        
     def on_event(self, event, payload):
-        if event == Events.PRINT_STARTED:
+        if event == Events.CONNECTED:
+            self._logger.info("Printer connected. Waiting for print to start...")
+            # Reset parameters and counters if necessary
             self.current_parameters = {
-                'lateral_speed': 100 
-            } # initialize with 100% default
+                'lateral_speed': 100
+            }
+            self._image_count = 0
             self._total_image_count = 0  # Reset the image counters on each connection
             self._batch_image_count = 0
+
+        elif event == Events.PRINT_STARTED:
+            self._logger.info("Print has started! Beginning image capture sequence.")
             self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz)
     
     def start_timer(self, interval):
@@ -38,10 +44,12 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
         self._timer.start()
 
     def snapshot_sequence(self):
-        if self._batch_image_count >= 100:
-            self._logger.info("Captured 100 images; stopping timer and resampling parameters.")
-            self._timer.cancel()  # Stop the timer once 100 images are captured
-            self.resample_and_send_parameters()
+        if self._batch_image_count >= 50:
+            self.resample_and_send_parameters() # resample first to send new target temperature with wait to "pause" print
+            self._logger.info(f"Captured 50 images (total {self._total_image_count} images); stopping timer and resampling parameters.")
+            self._timer.cancel()  # Stop the timer once 50 images are captured
+            self._batch_image_count = 0
+            self.start_timer(0.4)   # restart timer and take another batch of images
             return
 
         # Step 1: Capture the temperatures
@@ -68,19 +76,30 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
                 self.log_snapshot(snapshot_data)
                 self._total_image_count += 1
                 self._batch_image_count += 1
-                self._logger.info(f"read lateral speed: {self.current_parameters['lateral_speed']}")
+                # self._logger.info(f"read lateral speed: {self.current_parameters['lateral_speed']}")
 
     def resample_and_send_parameters(self):
         try:
-            # Step 4.1: Resample each parameter from specified ranges
-            # self.current_parameters['lateral_speed'] = random.uniform(20, 200)
-            self.current_parameters['lateral_speed'] = 200  # test if speed increases
+            # Resample each parameter from specified ranges
+            self.current_parameters['hotend_temp'] = random.uniform(180, 230)
+            self.current_parameters['lateral_speed'] = random.uniform(20, 200)
+            self.current_parameters['flow_rate'] = random.uniform(20, 200)
+            self.current_parameters['z_offset'] = random.uniform(-0.08, 0.32)
 
-            # Send the new lateral speed command to the printer
+            # self._printer.commands(f"M220 S{self.current_parameters['lateral_speed']}")
+            # self._logger.info(f"Lateral speed percentage set to: {self.current_parameters['lateral_speed']}%.")
+
+            # send M221 flow rate (e) command AFTER M220 command to override e-component of M220 command
+            self._printer.commands(f"M221 S{self.current_parameters['flow_rate']}")
+            self._logger.info(f"Flow rate percentage set to: {self.current_parameters['flow_rate']}%.")
+
+            # # Send new Z offset using babystepping
+            # self._printer.commands(f"M290 Z{self.current_parameters['z_offset']}")
+            # self._logger.info(f"Z offset (babystepping) set to: {self.current_parameters['z_offset']} mm.")
+
+            # Send the new printing parameter commands to the printer
             self._printer.commands("M109 R190")
             self._logger.info("testing mid-print cooldown")
-            self._printer.commands(f"M220 S{self.current_parameters['lateral_speed']}")
-            self._logger.info(f"Lateral speed percentage set to: {self.current_parameters['lateral_speed']}%.")
             
         except Exception as e:
             self._logger.error(f"Error setting new parameters: {e}")
