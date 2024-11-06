@@ -34,22 +34,31 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
             self._image_count = 0
             self._total_image_count = 0  # Reset the image counters on each connection
             self._batch_image_count = 0
+            self._capture_freq = 0.4 # s
 
         elif event == Events.PRINT_STARTED:
             self._logger.info("Print has started! Beginning image capture sequence.")
-            self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz)
-    
+            self.start_timer(self._capture_freq)  # Start the timer to repeat every 1 s (2.5 Hz)
+            
+        status = payload.get("state_id")
+        self._logger.info(f"CURRENT PRINTER STATUS IS: {status}")
+
     def start_timer(self, interval):
         self._timer = RepeatedTimer(interval, self.snapshot_sequence)
         self._timer.start()
 
     def snapshot_sequence(self):
-        if self._batch_image_count >= 50:
-            self.resample_and_send_parameters() # resample first to send new target temperature with wait to "pause" print
-            self._logger.info(f"Captured 50 images (total {self._total_image_count} images); stopping timer and resampling parameters.")
-            self._timer.cancel()  # Stop the timer once 50 images are captured
+        # Check heating status before capturing an image
+        if self.check_heating_status():
+            self._logger.info("Printer is currently heating/cooling. Skipping image capture.")
+            return  # Skip capturing images if the printer is heating/cooling
+
+        if self._batch_image_count >= 150:
+            self.resample_and_send_parameters()  # Resample first to send new target temperature with wait to "pause" print
+            self._logger.info(f"Captured 150 images (total {self._total_image_count} images); stopping timer and resampling parameters.")
+            self._timer.cancel()  # Stop the timer once 150 images are captured
             self._batch_image_count = 0
-            self.start_timer(0.4)   # restart timer and take another batch of images
+            self.start_timer(self._capture_freq)  # restart timer and take another batch of images
             return
 
         # Step 1: Capture the temperatures
@@ -71,12 +80,37 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
                     "target_bed": temps['target_bed'],
                     "bed": temps['bed'],
                     "lateral_speed": self.current_parameters['lateral_speed'],
-
                 }
                 self.log_snapshot(snapshot_data)
                 self._total_image_count += 1
                 self._batch_image_count += 1
                 # self._logger.info(f"read lateral speed: {self.current_parameters['lateral_speed']}")
+
+    def check_heating_status(self, threshold=2.5):
+        """
+        Check if the printer is currently heating or cooling by comparing the actual and target temperatures.
+        If the temperature difference exceeds the threshold, it indicates that the printer is heating or cooling.
+        """
+        temps = self._printer.get_current_temperatures()
+        if not temps:
+            self._logger.warning("Failed to retrieve temperature data from OctoPrint.")
+            return False  # Default to not heating if temperatures are not available
+        
+        # Get actual and target temperatures for hotend and bed
+        hotend_actual = temps['tool0']['actual']
+        hotend_target = temps['tool0']['target']
+        bed_actual = temps['bed']['actual']
+        bed_target = temps['bed']['target']
+
+        # Check if the printer is still heating or cooling (difference greater than threshold)
+        hotend_diff = abs(hotend_actual - hotend_target)
+        bed_diff = abs(bed_actual - bed_target)
+
+        # If either the hotend or bed is heating or cooling, return True
+        if hotend_diff > threshold:
+            return True  # Heating or cooling is ongoing
+        
+        return False  # No heating or cooling
 
     def resample_and_send_parameters(self):
         try:
@@ -98,7 +132,7 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
             # self._logger.info(f"Z offset (babystepping) set to: {self.current_parameters['z_offset']} mm.")
 
             # Send the new printing parameter commands to the printer
-            self._printer.commands("M109 R190")
+            self._printer.commands(f"M109 R{self.current_parameters['hotend_temp']}")
             self._logger.info("testing mid-print cooldown")
             
         except Exception as e:
@@ -136,12 +170,12 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
         try:
             response = requests.get(webcam_url)
             response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
-            self._logger.info("Image captured successfully.")
+            # self._logger.info("Image captured successfully.")
 
             # Save the image to the SD card
             with open(save_path, "wb") as f:
                 f.write(response.content)
-            self._logger.info(f"Snapshot saved to {save_path}")
+            # self._logger.info(f"Snapshot saved to {save_path}")
             
             return save_path  # Return the path where the image was saved
         except (requests.RequestException, IOError) as e:
@@ -172,7 +206,7 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
                     snapshot_data['bed'],
                     snapshot_data['lateral_speed']
                 ])
-                self._logger.info(f"Logged: {snapshot_data['timestamp']}, {snapshot_data['image_name']}, {snapshot_data['hotend']}, {snapshot_data['lateral_speed']}")
+                # self._logger.info(f"Logged: {snapshot_data['timestamp']}, {snapshot_data['image_name']}, {snapshot_data['hotend']}, {snapshot_data['lateral_speed']}")
         except IOError as e:
             self._logger.error(f"Error logging snapshot to {log_file}: {e}")
 
