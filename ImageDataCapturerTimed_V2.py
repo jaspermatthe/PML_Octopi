@@ -3,34 +3,32 @@ from __future__ import absolute_import
 
 from datetime import datetime
 import os
-import requests
 import random
+import requests
 import csv
 import octoprint.plugin
 from octoprint.events import Events
 from octoprint.util import RepeatedTimer
 
-__plugin_name__ = "ImageDataCapturerTimedInc"
+__plugin_name__ = "ImageDataCapturerTimed"
 __plugin_version__ = "1.1.0"
 __plugin_description__ = "A plugin to capture an image upon printer connection and log temperature details."
 __plugin_pythoncompat__ = ">=3.7,<4" 
 
-class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
+class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
 
     def on_after_startup(self):
-        self._logger.info("ImageDataCapturerTimedInc Plugin started!")
+        self._logger.info("ImageCapturerTimed Plugin started!")
         self._timer = None
-        self._total_image_count = 0
-        self._batch_image_count = 0
-        self.current_parameters = None
+        self._image_count = 0
+        self._batch_count = 0
+        self.current_parameters = {}
 
     def on_event(self, event, payload):
-        if event == Events.PRINT_STARTED:
-            self.current_parameters = {
-                'lateral_speed': 100 
-            } # initialize with 100% default
-            self._total_image_count = 0  # Reset the image counters on each connection
-            self._batch_image_count = 0
+        if event == Events.CONNECTED:
+            self._image_count = 0  # Reset the image counter on each connection
+            self._batch_count = 0  # Reset the batch counter
+            self.resample_and_send_parameters()  # Initial parameter sampling
             self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz)
     
     def start_timer(self, interval):
@@ -38,18 +36,17 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
         self._timer.start()
 
     def snapshot_sequence(self):
-        if self._batch_image_count >= 100:
-            self._logger.info("Captured 100 images; stopping timer and resampling parameters.")
-            self._timer.cancel()  # Stop the timer once 100 images are captured
-            self.resample_and_send_parameters()
-            return
-
+        if self._image_count >= 150:
+            self._image_count = 0  # Reset image counter for new batch
+            self._batch_count += 1
+            self.resample_and_send_parameters()  # Resample parameters for new batch
+        
         # Step 1: Capture the temperatures
         temps = self.capture_temperatures()
 
         # Step 2: Only if temperatures are successfully captured, proceed to capture the image
         if temps:
-            image_name = f"image-{self._total_image_count}.jpg"
+            image_name = f"batch-{self._batch_count}_image-{self._image_count}.jpg"
             image_path = self.capture_image(image_name)
             
             if image_path:
@@ -62,28 +59,38 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
                     "hotend": temps['hotend'],
                     "target_bed": temps['target_bed'],
                     "bed": temps['bed'],
-                    "lateral_speed": self.current_parameters['lateral_speed'],
-
+                    # Include current parameters for the batch
+                    "flow_rate": self.current_parameters.get('flow_rate'),
+                    "lateral_speed": self.current_parameters.get('lateral_speed'),
+                    "z_offset": self.current_parameters.get('z_offset'),
+                    "target_hotend_temp": self.current_parameters.get('hotend_temp')
                 }
                 self.log_snapshot(snapshot_data)
-                self._total_image_count += 1
-                self._batch_image_count += 1
-                self._logger.info(f"read lateral speed: {self.current_parameters['lateral_speed']}")
+                self._image_count += 1
 
     def resample_and_send_parameters(self):
-        try:
-            # Step 4.1: Resample each parameter from specified ranges
-            # self.current_parameters['lateral_speed'] = random.uniform(20, 200)
-            self.current_parameters['lateral_speed'] = 200  # test if speed increases
+        # Step 4.1: Resample each parameter from specified ranges
+        self.current_parameters['flow_rate'] = random.uniform(20, 200)
+        self.current_parameters['lateral_speed'] = random.uniform(20, 200)
+        self.current_parameters['z_offset'] = random.uniform(-0.08, 0.32)
+        self.current_parameters['hotend_temp'] = random.uniform(180, 230)
 
-            # Send the new lateral speed command to the printer
-            self._printer.commands("M109 R190")
-            self._logger.info("testing mid-print cooldown")
-            self._printer.commands(f"M220 S{self.current_parameters['lateral_speed']}")
-            self._logger.info(f"Lateral speed percentage set to: {self.current_parameters['lateral_speed']}%.")
-            
-        except Exception as e:
-            self._logger.error(f"Error setting new parameters: {e}")
+        # Step 4.2: Send new parameters as G-code commands
+        # Send new hotend temperature
+        self._printer.commands(f"M109 S{self.current_parameters['hotend_temp']}")
+        self._logger.info(f"Hotend temperature set to: {self.current_parameters['hotend_temp']}°C and waiting to stabilize.")
+
+        # Send new lateral speed
+        self._printer.commands(f"M220 S{self.current_parameters['lateral_speed']}")
+        self._logger.info(f"Lateral speed percentage set to: {self.current_parameters['lateral_speed']}%.")
+
+        # Send new flow rate
+        self._printer.commands(f"M221 S{self.current_parameters['flow_rate']}")
+        self._logger.info(f"Flow rate percentage set to: {self.current_parameters['flow_rate']}%.")
+
+        # Send new Z offset using babystepping
+        self._printer.commands(f"M290 Z{self.current_parameters['z_offset']}")
+        self._logger.info(f"Z offset (babystepping) set to: {self.current_parameters['z_offset']} mm.")
 
     def capture_temperatures(self):
         try:
@@ -130,7 +137,7 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
             return None
 
     def log_snapshot(self, snapshot_data):
-        log_file = "/media/sdcard/snapshots/print_log_full_inc.csv"
+        log_file = "/media/sdcard/snapshots/print_log_full.csv"
         log_exists = os.path.exists(log_file)
 
         try:
@@ -139,7 +146,8 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
                 writer = csv.writer(file)
                 if not log_exists:
                     # If the log file doesn't exist, write the header first
-                    writer.writerow(["Timestamp", "Image Name", "Image Path", "Target Hotend", "Hotend", "Target Bed", "Bed", "Lateral Speed"])
+                    writer.writerow(["Timestamp", "Image Name", "Image Path", "Target Hotend", "Hotend", "Target Bed", "Bed", 
+                                     "Flow Rate", "Lateral Speed", "Z Offset", "Target Hotend Temperature"])
                     self._logger.info("Created new log file with headers.")
                 
                 # Log the data from the dictionary
@@ -151,10 +159,13 @@ class ImageDataCapturerTimedInc(octoprint.plugin.EventHandlerPlugin):
                     snapshot_data['hotend'],
                     snapshot_data['target_bed'],
                     snapshot_data['bed'],
-                    snapshot_data['lateral_speed']
+                    snapshot_data['flow_rate'],
+                    snapshot_data['lateral_speed'],
+                    snapshot_data['z_offset'],
+                    snapshot_data['target_hotend_temp']
                 ])
-                self._logger.info(f"Logged: {snapshot_data['timestamp']}, {snapshot_data['image_name']}, {snapshot_data['hotend']}, {snapshot_data['lateral_speed']}")
+                self._logger.info(f"Logged: {snapshot_data['timestamp']}, {snapshot_data['image_name']}, {snapshot_data['target_hotend']}, {snapshot_data['hotend']}")
         except IOError as e:
             self._logger.error(f"Error logging snapshot to {log_file}: {e}")
 
-__plugin_implementation__ = ImageDataCapturerTimedInc()
+__plugin_implementation__ = ImageDataCapturerTimed()
