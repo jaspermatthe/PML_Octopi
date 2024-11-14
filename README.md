@@ -69,9 +69,16 @@ You should now be logged into the Octoprint server.
 Setup as guided and then backup your settings for future use:
 Octoprint Settings→Backup and Restore
 
-#### Test webcam and connection to printer.
-1. Plug in the serial 
+#### (Alternatively) you can SSH into the RPi to control it
+1. Open a terminal on your computer
+2. Enter:
+    - ssh raspberry@YOUR_RPIs_IPADDRESS
+    - the password
 
+#### Test webcam and connection to printer.
+1. Connect the printer to the RPi via the USB A to B cable.
+2. Connect the webcam to the RPi via the camera's USB cable.
+3. Restart the Octoprint server
 ## 2. Octoprint Plugin Development
 
 
