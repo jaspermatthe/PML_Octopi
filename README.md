@@ -22,29 +22,33 @@ This documentation is divided into two sections:
 
 ### Assigning a static IP Address to the Pi
 _Instructions in this subsection are only valid for use at the UW - Seattle._
-Now that the RPi has read the Octoprint Image off the SD card, it will have also written its identiers to the SD card. We want to read these to help the RPi connect to the internet automatically upon being powered-up.
+
+Now that the RPi has read the Octoprint Image off the SD card, it will have also written its identifiers to the SD card. We want to read these to help the RPi connect to the internet automatically upon being powered-up.
+#### Find the RPi's MAC Address
 1. Remove the SD card from the RPi
-2. 
-Assign a static IP address to the Pi
-Find the MAC Address of the Raspberry Pi
-Plug in the SD card into your computer
-Open rootfs drive → var → log → syslog file
-Control f to find the “macaddr”, making sure you log the most recent one
-Currently: D8:3A:DD:A0:DF:1A
-Create a UW MPSK device login:
-https://itconnect.uw.edu/tools-services-support/networks-connectivity/uw-networks/campus-wi-fi/uw-mpsk/
-Follow the instructions to set up a username and password assigned to the MAC Address of the Pi you found above.
-Change wifi settings on the Pi:
-https://community.octoprint.org/t/wifi-setup-and-troubleshooting/184
-Read SD card on laptop
-Open boot drive
-Change the wifi details in “octopi-wpa-supplicant.txt” according to what you set up for UW MPSK:
-SSID: UW MPSK
-Password: ;g-t5:acnM
-Wireless LAN country: US
-Eject properly
-Request a static IP address for the Pi: https://itconnect.uw.edu/tools-services-support/networks-connectivity/uw-networks/campus-wi-fi/wifi-static/: 
-IP Address of As of Oct 8, 2024: 10.18.2.98
+2. Plug in the SD card into your computer
+3. Open the "rootfs" drive. Open the "syslog" file located at var\log\syslog
+4. Use CTRL-F to find “macaddr”, log the most recent one. For example: "D8:3A:DD:A0:DF:1A". This is a unique identifier assigned to the RPi - it is it's "name" seen by the wifi network.
+
+#### Create a UW MPSK device login:
+Follow these instructions to set up a username and password assigned to the MAC Address of the RPi you found above: 
+https://itconnect.uw.edu/tools-services-support/networks-connectivity/uw-networks/campus-wi-fi/uw-mpsk/. Take note of the username and password for the next step.
+
+#### Change wifi settings on the RPi
+Instructions from: https://community.octoprint.org/t/wifi-setup-and-troubleshooting/184.
+1. Read SD card on laptop
+2. Open "boot" drive
+3. Change the wifi details in “octopi-wpa-supplicant.txt” according to what you set up for UW MPSK:
+        - SSID: UW MPSK
+        - Password: XXXXXXX
+        - Wireless LAN country: US
+4. Eject the SD card properly
+
+#### Request static IP address for the RPi
+Follow instructions here: https://itconnect.uw.edu/tools-services-support/networks-connectivity/uw-networks/campus-wi-fi/wifi-static/. Providing all the details of the RPi.
+
+Once your request is completed by UW IT, your RPi should be able to connect automatically to the UW MPSK wifi network upon being plugged in.
+
 Re-plug the SD card into the Pi
 Go to Pi’s IP address in a browser as found above. 
 Current login details:
