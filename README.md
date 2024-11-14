@@ -1,8 +1,11 @@
 # PML_Pi
 The following equipment is used for this setup:
 - Raspberry Pi Model 4B
+- Official RPi power supply
 - Original Prusa i3 MK3
 - Logitech C270
+- Desktop monitor
+- HDMI to mini-HDMI cable
 
 This documentation is divided into two sections:
 1. Raspberry Pi Octoprint Setup and Connection to Printer;
@@ -39,25 +42,31 @@ Instructions from: https://community.octoprint.org/t/wifi-setup-and-troubleshoot
 1. Read SD card on laptop
 2. Open "boot" drive
 3. Change the wifi details in “octopi-wpa-supplicant.txt” according to what you set up for UW MPSK:
-        - SSID: UW MPSK
-        - Password: XXXXXXX
-        - Wireless LAN country: US
+    - SSID: UW MPSK
+    - Password: XXXXXXX
+    - Wireless LAN country: US
 4. Eject the SD card properly
+5. Re-plug the SD card into the Pi
 
 #### Request static IP address for the RPi
 Follow instructions here: https://itconnect.uw.edu/tools-services-support/networks-connectivity/uw-networks/campus-wi-fi/wifi-static/. Providing all the details of the RPi.
 
 Once your request is completed by UW IT, your RPi should be able to connect automatically to the UW MPSK wifi network upon being plugged in.
 
-Re-plug the SD card into the Pi
-Go to Pi’s IP address in a browser as found above. 
-Current login details:
-Username: raspberry
-Pwd: pi
+#### Plug in the RPi and connect to the Octoprint server
+Make sure the RPi has its SD card plugged in.
+
+1. Plug in the RPi
+2. Wait until green LED stops blinking
+3. Navigate to Pi’s IP address in a browser as found above.
+4. Login with the username and password you specified 
+    - Username: raspberry
+    - Pwd: pi
+
 You should now be logged into the Octoprint server.
+
 Setup as guided and then backup your settings for future use:
 Octoprint Settings→Backup and Restore
-
 
 ## 2. Octoprint Plugin Development
 
