@@ -81,5 +81,33 @@ Octoprint Settings→Backup and Restore
 3. Restart the Octoprint server
 ## 2. Octoprint Plugin Development
 
+### Control Webcam Settings
+https://community.octoprint.org/t/changed-the-video-feed-brightness-contrast-and-settings-for-my-logitech-usb-video/1103
+
+Install uvcdynctrl
+
+    sudo apt-get install uvcdynctrl
+
+All available controls for the connected camera are given by:
+
+    uvcdynctrl -d /dev/video0 -c
+    
+For the logitech C270 that is:
+- Brightness
+- Contrast
+- Saturation
+- White Balance, Automatic
+- Gain
+- Power Line Frequency
+- White Balance Temperature
+- Sharpness
+- Backlight Compensation
+- Auto Exposure
+- Exposure Time, Absolute
+- Exposure, Dynamic Framerate
+
+For example to change brightness:
+
+    uvcdynctrl -s 'Brightness' 100
 
 
