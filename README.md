@@ -150,10 +150,10 @@ You can flash Marlin Firmware to your Prusa MK3S using VsCode and two plugins: A
 https://github.com/MarlinFirmware/Configurations/tree/bugfix-2.1.x/config/examples/Prusa/MK3.
 
 ### Marlin Calibration
-E-steps: leaving as is in the configuration.h file
-PID tune bed: https://marlinfw.org/docs/gcode/M303.html
-PID tune hot end: https://marlinfw.org/docs/gcode/M303.html
-ABL (if you have a probe): https://marlinfw.org/docs/features/auto_bed_leveling.html
-Z-offset (if you have a probe): use this first layer calibration: https://www.printables.com/model/251587-stress-free-first-layer-calibration-in-less-than-5
+- E-steps: leaving as is in the configuration.h file
+- PID tune bed: [https://marlinfw.org/docs/gcode/M303.html](https://marlinfw.org/docs/gcode/M303.html)
+- PID tune hot end: [https://marlinfw.org/docs/gcode/M303.html](https://marlinfw.org/docs/gcode/M303.html)
+- ABL (if you have a probe): [https://marlinfw.org/docs/features/auto_bed_leveling.html](https://marlinfw.org/docs/features/auto_bed_leveling.html)
+- Z-offset (if you have a probe): use this first layer calibration: [https://www.printables.com/model/251587-stress-free-first-layer-calibration-in-less-than-5](https://www.printables.com/model/251587-stress-free-first-layer-calibration-in-less-than-5)
 
 
