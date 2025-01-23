@@ -123,10 +123,10 @@ For example to change brightness:
 
     v4l2-ctl -d /dev/video0 -c brightness=150
 
-To change focus mode to manual:
+To change focus mode to manual (390 is decent for current setup):
 
     v4l2-ctl -d /dev/video0 -c focus_automatic_continuous=0
-    v4l2-ctl -d /dev/video0 -c focus_absolute=100
+    v4l2-ctl -d /dev/video0 -c focus_absolute=390
 
 
 ### Flashing to Marlin Firmware
