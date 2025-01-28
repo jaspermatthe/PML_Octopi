@@ -17,26 +17,29 @@ __plugin_pythoncompat__ = ">=3.7,<4"
 
 class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
 
+    # Initialize counters, timers, and loggers
     def on_after_startup(self):
         self._logger.info("ImageCapturerTimed Plugin started!")
-        self._timer = None
-        self._image_count = 0
-        self._batch_count = 0
-        self.current_parameters = {}
+        self._timer = None              
+        self._image_per_batch = 150
+        self._image_count = 0           
+        self._batch_count = 0           
+        self.current_parameters = {}    
 
+    # Monitor printer events to activate random parameter sampling
     def on_event(self, event, payload):
         if event == Events.CONNECTED:
             self._image_count = 0  # Reset the image counter on each connection
             self._batch_count = 0  # Reset the batch counter
             self.resample_and_send_parameters()  # Initial parameter sampling
-            self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz)
+            self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz), so that an image is taken every 0.4s
     
     def start_timer(self, interval):
         self._timer = RepeatedTimer(interval, self.snapshot_sequence)
         self._timer.start()
 
     def snapshot_sequence(self):
-        if self._image_count >= 150:
+        if self._image_count >= self._image_per_batch:
             self._image_count = 0  # Reset image counter for new batch
             self._batch_count += 1
             self.resample_and_send_parameters()  # Resample parameters for new batch
