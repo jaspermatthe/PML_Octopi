@@ -88,40 +88,46 @@ https://stackoverflow.com/questions/61581125/v4l2-absolute-exposure-setting-has-
 All available controls for the connected camera are given by:
 
     v4l2-ctl --list-ctrls-menus
-
 User Controls
 
-                     brightness 0x00980900 (int)    : min=0 max=255 step=1 default=128 value=100
-                       contrast 0x00980901 (int)    : min=0 max=255 step=1 default=32 value=32
-                     saturation 0x00980902 (int)    : min=0 max=255 step=1 default=32 value=32
+                     brightness 0x00980900 (int)    : min=-64 max=64 step=1 default=0 value=0
+                       contrast 0x00980901 (int)    : min=0 max=100 step=1 default=30 value=30
+                     saturation 0x00980902 (int)    : min=0 max=128 step=1 default=54 value=54
+                            hue 0x00980903 (int)    : min=-180 max=180 step=1 default=0 value=0
         white_balance_automatic 0x0098090c (bool)   : default=1 value=1
-                           gain 0x00980913 (int)    : min=0 max=255 step=1 default=64 value=192
-           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=2 value=2
+                          gamma 0x00980910 (int)    : min=100 max=500 step=1 default=300 value=300
+                           gain 0x00980913 (int)    : min=0 max=128 step=1 default=70 value=70
+           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=1 value=1
 				0: Disabled
 				1: 50 Hz
 				2: 60 Hz
-      white_balance_temperature 0x0098091a (int)    : min=0 max=10000 step=10 default=4000 value=1070 flags=inactive
-                      sharpness 0x0098091b (int)    : min=0 max=255 step=1 default=24 value=24
-         backlight_compensation 0x0098091c (int)    : min=0 max=1 step=1 default=0 value=0
+      white_balance_temperature 0x0098091a (int)    : min=2800 max=6500 step=10 default=4600 value=4600 flags=inactive
+                      sharpness 0x0098091b (int)    : min=0 max=100 step=1 default=90 value=90
+         backlight_compensation 0x0098091c (int)    : min=0 max=2 step=1 default=1 value=1
 
 Camera Controls
 
                   auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3
 				1: Manual Mode
 				3: Aperture Priority Mode
-         exposure_time_absolute 0x009a0902 (int)    : min=1 max=10000 step=1 default=166 value=419 flags=inactive
+         exposure_time_absolute 0x009a0902 (int)    : min=1 max=10000 step=1 default=166 value=166 flags=inactive
      exposure_dynamic_framerate 0x009a0903 (bool)   : default=0 value=1
-                      led1_mode 0x0a046d05 (menu)   : min=0 max=3 default=3 value=3
-				0: Off
-				1: On
-				2: Blink
-				3: Auto
-                 led1_frequency 0x0a046d06 (int)    : min=0 max=131 step=1 default=0 value=0
+                   pan_absolute 0x009a0908 (int)    : min=-57600 max=57600 step=3600 default=0 value=0
+                  tilt_absolute 0x009a0909 (int)    : min=-43200 max=43200 step=3600 default=0 value=0
+                 focus_absolute 0x009a090a (int)    : min=0 max=990 step=1 default=68 value=68 flags=inactive
+     focus_automatic_continuous 0x009a090c (bool)   : default=1 value=1
+                  zoom_absolute 0x009a090d (int)    : min=0 max=3 step=1 default=0 value=0
 
 
 For example to change brightness:
 
     v4l2-ctl -d /dev/video0 -c brightness=150
+
+To change focus mode to manual (390 is decent for current setup):
+
+    v4l2-ctl -d /dev/video0 -c focus_automatic_continuous=0
+    v4l2-ctl -d /dev/video0 -c focus_absolute=390
+
 
 ### Flashing to Marlin Firmware
 You can flash Marlin Firmware to your Prusa MK3S using VsCode and two plugins: Auto Build Marlin and PlatformIO.
