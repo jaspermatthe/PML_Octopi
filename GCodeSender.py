@@ -19,7 +19,7 @@ class GCodeSenderPlugin(octoprint.plugin.StartupPlugin):
 
     def on_event(self, event, payload):
         if event == Events.CONNECTED:
-            gcode_path = "/path/to/your/gcodefile.gcode"  # Replace with your actual G-code file path
+            gcode_path = "/home/raspberry/STL_GCODE/Cute_Mini_Octopus.gcode"  # Replace with your actual G-code file path
             self.send_gcode_file(gcode_path)
 
 
