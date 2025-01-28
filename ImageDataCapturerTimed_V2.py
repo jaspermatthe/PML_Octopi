@@ -12,7 +12,7 @@ from octoprint.util import RepeatedTimer
 
 __plugin_name__ = "ImageDataCapturerTimed"
 __plugin_version__ = "1.1.0"
-__plugin_description__ = "A plugin to capture an image upon printer connection and log temperature details."
+__plugin_description__ = "Capture batches of 150 images and printing parameters before resampling parameters."
 __plugin_pythoncompat__ = ">=3.7,<4" 
 
 class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
