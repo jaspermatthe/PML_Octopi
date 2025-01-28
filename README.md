@@ -163,3 +163,11 @@ https://github.com/MarlinFirmware/Configurations/tree/bugfix-2.1.x/config/exampl
 - Z-offset (if you have a probe): use this first layer calibration: [https://www.printables.com/model/251587-stress-free-first-layer-calibration-in-less-than-5](https://www.printables.com/model/251587-stress-free-first-layer-calibration-in-less-than-5)
 
 
+### Serial Connection Issues
+If you encounter this error code in the octroprint logs:
+
+    WARNING - The received line contains at least one null byte character at position XX, this hints at some data corruption going on
+
+Disconnect printer, select different baud rate, attempt to reconnect, then disconnect and set back to default 250000 baud rate. This should fix the issue. This is, if the USB serial cable works fine. You can verify this by trying to reproduce the error with a different USB cable.
+
+
