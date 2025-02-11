@@ -162,4 +162,72 @@ https://github.com/MarlinFirmware/Configurations/tree/bugfix-2.1.x/config/exampl
 - ABL (if you have a probe): [https://marlinfw.org/docs/features/auto_bed_leveling.html](https://marlinfw.org/docs/features/auto_bed_leveling.html)
 - Z-offset (if you have a probe): use this first layer calibration: [https://www.printables.com/model/251587-stress-free-first-layer-calibration-in-less-than-5](https://www.printables.com/model/251587-stress-free-first-layer-calibration-in-less-than-5)
 
+### G-code Commands for Marlin Firmware
+
+1. **M220 - Set Feedrate Percentage**  
+   - **Description**: Sets the speed for all axes (x, y, z, and e) as a percentage of the configured maximum speed.  
+   - **Usage**: `M220 S<percentage>`  
+   - **Example**: `M220 S100` (sets speed to 100%)  
+   - **Documentation**: [M220 Documentation](https://marlinfw.org/docs/gcode/M220.html)
+
+2. **M221 - Set Flow Percentage**  
+   - **Description**: Overrides the flow rate (extrusion speed) for the E-axis only.  
+   - **Usage**: `M221 S<percentage>`  
+   - **Example**: `M221 S90` (sets flow rate to 90%)  
+   - **Documentation**: [M221 Documentation](https://marlinfw.org/docs/gcode/M221.html)
+
+3. **M290 - Baby Stepping in Z-axis**  
+   - **Description**: Adjusts the Z-offset in small increments (baby steps) for fine-tuning the nozzle height.  
+   - **Usage**: `M290 Z<offset>`  
+   - **Example**: `M290 Z0.05` (increases Z-offset by 0.05mm)  
+   - **Documentation**: [M290 Documentation](https://marlinfw.org/docs/gcode/M290.html)  
+   - **Note**: This command is specific to Marlin firmware. Prusa firmware does not recognize it. You may need to flash Marlin firmware to use this feature.
+
+4. **M109 - Set Hotend Temperature and Wait**  
+   - **Description**: Sets the target temperature for the hotend and waits for it to reach the target before continuing.  
+   - **Usage**: `M109 S<temperature>`  
+   - **Example**: `M109 S200` (sets hotend temperature to 200°C and waits)  
+   - **Documentation**: [M109 Documentation](https://marlinfw.org/docs/gcode/M109.html)
+
+### Miscellaneous Commands and Tips
+
+#### Terminal Commands
+1. **List Hidden Directories**  
+   - `ls -ld .?*`  
+
+2. **List USB Ports**  
+   - `lsusb -t`  
+
+3. **List Block (Storage) Devices**  
+   - `lsblk`  
+
+4. **Check OctoPrint Logs for Errors**  
+   - `cat ~/.octoprint/logs/octoprint.log`  
+
+5. **Activate Virtual Environment (venv) on Raspberry Pi Desktop**  
+   - `source ~/oprint/bin/activate`  
+
+#### Restart/Shutdown OctoPi Server
+1. **Restart OctoPrint Service**  
+   - `sudo service octoprint restart`  
+
+2. **Restart System**  
+   - `sudo shutdown -r now`  
+
+3. **Shutdown System**  
+   - `sudo shutdown -h now`  
+
+#### PrusaSlicer on Raspberry Pi 4 (64-bit-capable) with OctoPrint (32-bit Image)
+- Use the `armv7l` `.appimage` files from the official [PrusaSlicer GitHub](https://github.com/prusa3d/PrusaSlicer).  
+
+#### Accessing Files on Printer's SD Card
+- Refer to the [OctoPrint Community Guide](https://community.octoprint.org/t/how-to-access-files-on-the-printers-sd-card/6518) for detailed instructions.
+
+### Serial Connection Issues
+If you encounter this error code in the octroprint logs:
+
+    WARNING - The received line contains at least one null byte character at position XX, this hints at some data corruption going on
+
+Disconnect printer, select different baud rate, attempt to reconnect, then disconnect and set back to default 250000 baud rate. This should fix the issue. This is, if the USB serial cable works fine. You can verify this by trying to reproduce the error with a different USB cable.
+
 
