@@ -26,6 +26,7 @@ infill_patterns = [
 infill_pattern = random.choice(infill_patterns)  # Randomly choose an infill pattern
 infill_density = random.uniform(0.0, 0.40)  # Infill density between 0 and 0.40
 perimeters = random.randint(2, 4)  # Number of external perimeter walls between 2 and 4
+bed_temperature = 60  
 
 # Print sampled parameters
 print(f"Sampled rotation: {rotation} degrees")  # Print the sampled rotation
@@ -34,6 +35,7 @@ print(f"Sampled solid layers (top, bottom): {solid_layers}")
 print(f"Sampled infill pattern: {infill_pattern}")
 print(f"Sampled infill density: {infill_density:.2f}")
 print(f"Sampled perimeters: {perimeters}")
+print(f"Sampled bed temperature: {bed_temperature}°C")
 
 # Centering coordinates for MK3/S/+ print volume
 center_x = 125  # Half of 250 mm
@@ -56,6 +58,9 @@ command = [
     "--fill-pattern", infill_pattern,  # Infill pattern
     "--fill-density", str(infill_density),  # Infill density percentage
     "--perimeters", str(perimeters),  # Number of external perimeter walls
+
+    # BED TEMPERATURE
+    "--bed-temperature", str(bed_temperature),  # Set bed temperature
 
     # OUTPUT
     "--output", output_gcode_path,  # Specify the output G-code file
