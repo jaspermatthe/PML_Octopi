@@ -14,58 +14,64 @@ if not os.path.exists(stl_file_path):
     raise FileNotFoundError(f"STL file not found at {stl_file_path}")
 
 # Parameters
-rotation = random.randint(0, 360)  # Randomly sample rotation between 0 and 360
-# Sampled parameters
+rotation = random.randint(0, 360)  # Random rotation
 scale = random.uniform(0.8, 2.0)  # Scale between 0.8 and 2.0
-solid_layers = (random.randint(2, 4), random.randint(2, 4))  # Random top and bottom layers between 2 and 4
+solid_layers = (random.randint(2, 4), random.randint(2, 4))  # Random solid layers
 infill_patterns = [
     "rectilinear", "grid", "triangles", "stars", "cubic", 
     "line", "concentric", "honeycomb", "3dhoneycomb", 
     "gyroid", "hilbertcurve", "archimedeanchords", "octagramspiral"
 ]
-infill_pattern = random.choice(infill_patterns)  # Randomly choose an infill pattern
-infill_density = random.uniform(0.0, 0.40)  # Infill density between 0 and 0.40
-perimeters = random.randint(2, 4)  # Number of external perimeter walls between 2 and 4
-bed_temperature = 60  
+infill_pattern = random.choice(infill_patterns)  # Random infill pattern
+infill_density = random.uniform(0.0, 0.40)  # Infill density between 0 and 40%
+perimeters = random.randint(2, 4)  # Perimeters between 2 and 4
+bed_temperature = 60  # Bed temperature
+hotend_temperature = 200  # Hotend temperature
 
 # Print sampled parameters
-print(f"Sampled rotation: {rotation} degrees")  # Print the sampled rotation
+print(f"Sampled rotation: {rotation} degrees")  
 print(f"Sampled scale: {scale:.2f}")
 print(f"Sampled solid layers (top, bottom): {solid_layers}")
 print(f"Sampled infill pattern: {infill_pattern}")
 print(f"Sampled infill density: {infill_density:.2f}")
 print(f"Sampled perimeters: {perimeters}")
 print(f"Sampled bed temperature: {bed_temperature}°C")
+print(f"Sampled hotend temperature: {hotend_temperature}°C")
 
 # Centering coordinates for MK3/S/+ print volume
 center_x = 125  # Half of 250 mm
 center_y = 105  # Half of 210 mm
 
-# Command to run PrusaSlicer to slice the STL file
+# Custom Start G-code (optimized heating)
+start_gcode = f"""
+M140 S{bed_temperature}  ; Set bed temp (non-blocking)
+M104 S{hotend_temperature}  ; Set hotend temp (non-blocking)
+G28  ; Home all axes
+G1 Z5 F5000  ; Lift nozzle
+M190 S{bed_temperature}  ; Wait for bed temp
+M109 S{hotend_temperature}  ; Wait for hotend temp
+G21  ; Set units to millimeters
+G90  ; Use absolute positioning
+M82  ; Use absolute extrusion
+G92 E0  ; Reset extruder position
+"""
+
+# Command to run PrusaSlicer
 command = [
     prusa_slicer_path,
-    # ACTIONS
-    "--slice",  # Add slicing command
-
-    # TRANSFORMATIONS
+    "--slice",  # Slice the STL file
     "--scale", str(scale),
     "--rotate", str(rotation),
     "--center", f"{center_x},{center_y}",  # Center the model
-
-    # MISC OPTIONS
-    "--top-solid-layers", str(solid_layers[0]),  # Number of top solid layers
-    "--bottom-solid-layers", str(solid_layers[1]),  # Number of bottom solid layers
+    "--top-solid-layers", str(solid_layers[0]),  # Top solid layers
+    "--bottom-solid-layers", str(solid_layers[1]),  # Bottom solid layers
     "--fill-pattern", infill_pattern,  # Infill pattern
-    "--fill-density", str(infill_density),  # Infill density percentage
-    "--perimeters", str(perimeters),  # Number of external perimeter walls
-
-    # BED TEMPERATURE
-    "--first-layer-bed-temperature", str(bed_temperature),  # Set bed temperature
-
-    # OUTPUT
-    "--output", output_gcode_path,  # Specify the output G-code file
-
-    # STL FILE PATH
+    "--fill-density", str(infill_density),  # Infill density
+    "--perimeters", str(perimeters),  # Perimeters
+    "--first-layer-bed-temperature", str(bed_temperature),  # Set bed temp
+    "--first-layer-temperature", str(hotend_temperature),  # Set hotend temp
+    "--output", output_gcode_path,  # Output G-code file
+    "--start-gcode", start_gcode,  # Inject optimized start G-code
     stl_file_path
 ]
 
