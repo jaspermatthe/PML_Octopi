@@ -4,8 +4,8 @@ import random  # Import the random module
 
 # Path to your PrusaSlicer AppImage
 prusa_slicer_path = os.path.expanduser("/home/raspberry/Documents/PrusaSlicer-2.7.3+linux-armv7l-GTK2-202403280945.AppImage")
-stl_file_path = "/home/raspberry/thingiscrape/downloads/stls/Cute_Mini_Octopus_/Octopus_v6.stl"
-output_gcode_path = "/home/raspberry/STL_GCODE/Cute_Mini_Octopus.gcode"  # Include the .gcode extension
+stl_file_path = "/home/raspberry/thingiscrape/downloads/stls/#3DBenchy_-_The_jolly_3D_printing_torture-test_by_CreativeTools.se/3DBenchy.stl"
+output_gcode_path = "/home/raspberry/STL_GCODE/3D_benchy.gcode"  # Include the .gcode extension
 
 # Ensure the paths are correct
 if not os.path.exists(prusa_slicer_path):

@@ -29,7 +29,7 @@ class PmlOctoPrinter(octoprint.plugin.StartupPlugin, octoprint.plugin.EventHandl
     def on_event(self, event, payload):
         if event == Events.CONNECTED:
             self._logger.info("Printer connected event detected")
-            filename = "Cute_Mini_Octopus.gcode"  # File name in OctoPrint's local storage
+            filename = "3D_benchy.gcode"  # File name in OctoPrint's local storage
             self.send_gcode_file(filename)
 
         elif event == Events.PRINT_STARTED:
