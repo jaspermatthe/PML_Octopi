@@ -10,27 +10,36 @@ import octoprint.plugin
 from octoprint.events import Events
 from octoprint.util import RepeatedTimer
 
-__plugin_name__ = "ImageDataCapturerTimed"
+__plugin_name__ = "ImageDataCapturerTimedV2"
 __plugin_version__ = "1.1.0"
 __plugin_description__ = "Capture batches of 150 images and printing parameters before resampling parameters."
 __plugin_pythoncompat__ = ">=3.7,<4" 
 
-class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
+class ImageDataCapturerTimedV2(octoprint.plugin.EventHandlerPlugin):
 
-    # Initialize counters, timers, and loggers
-    def on_after_startup(self):
-        self._logger.info("ImageCapturerTimed Plugin started!")
-        self._timer = None              
-        self._image_per_batch = 150
-        self._image_count = 0           
-        self._batch_count = 0           
-        self.current_parameters = {}    
+    # On/after startup does not trigger on startup of printer anymore, use events.CONNECTED
+    # # Initialize counters, timers, and loggers
+    # def on_after_startup(self):
+    #     self._logger.info("ImageCapturerTimed Plugin started!")
+    #     self._timer = None
+    #     self._image_per_batch = 150
+    #     self._image_count = 0  
+    #     self._batch_count = 0   
+    #     self.current_parameters = {}
 
     # Monitor printer events to activate random parameter sampling
     def on_event(self, event, payload):
         if event == Events.CONNECTED:
+
+            self._logger.info("WE ARE CONNECTED")
+            self._logger.info("ImageCapturerTimed Plugin started!")
+            self._timer = None
+            self._image_per_batch = 150
             self._image_count = 0  # Reset the image counter on each connection
             self._batch_count = 0  # Reset the batch counter
+            self.current_parameters = {}
+
+
             self.resample_and_send_parameters()  # Initial parameter sampling
             self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz), so that an image is taken every 0.4s
     
@@ -171,4 +180,4 @@ class ImageDataCapturerTimed(octoprint.plugin.EventHandlerPlugin):
         except IOError as e:
             self._logger.error(f"Error logging snapshot to {log_file}: {e}")
 
-__plugin_implementation__ = ImageDataCapturerTimed()
+__plugin_implementation__ = ImageDataCapturerTimedV2()
