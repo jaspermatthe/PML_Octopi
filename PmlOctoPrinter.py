@@ -8,7 +8,6 @@ from octoprint.events import Events
 from octoprint.util import RepeatedTimer
 from octoprint.filemanager import FileDestinations
 
-
 __plugin_name__ = "PmlOctoPrinter"
 __plugin_version__ = "1.0.0"
 __plugin_description__ = "A plugin to send G-code files for printing and capture images during the print."
@@ -24,6 +23,8 @@ class PmlOctoPrinter(octoprint.plugin.StartupPlugin, octoprint.plugin.EventHandl
         self._image_count = 0
         self._batch_count = 0
         self.current_parameters = {}
+        self._heating_up = False  # Track if the printer is heating up
+        self._initial_heatup_complete = False  # Track if initial heatup is complete
 
     def on_event(self, event, payload):
         if event == Events.CONNECTED:
@@ -33,9 +34,10 @@ class PmlOctoPrinter(octoprint.plugin.StartupPlugin, octoprint.plugin.EventHandl
 
         elif event == Events.PRINT_STARTED:
             self._logger.info("Print started event detected")
+            self._heating_up = True  # Printer is heating up
+            self._initial_heatup_complete = False  # Reset initial heatup flag
             self._image_count = 0  # Reset the image counter on each print start
             self._batch_count = 0  # Reset the batch counter
-            self.resample_and_send_parameters()  # Initial parameter sampling
             self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz)
 
         elif event == Events.PRINT_DONE or event == Events.PRINT_FAILED:
@@ -57,17 +59,61 @@ class PmlOctoPrinter(octoprint.plugin.StartupPlugin, octoprint.plugin.EventHandl
         self._timer.start()
 
     def snapshot_sequence(self):
-        if self._image_count >= self._image_per_batch:
-            self._image_count = 0  # Reset image counter for new batch
-            self._batch_count += 1
-            self.resample_and_send_parameters()  # Resample parameters for new batch
+        # Step 1: Check if the printer is heating up
+        if self._heating_up:
+            temps = self.capture_temperatures()
+            if temps and self._is_heating_complete(temps):
+                self._logger.info("Initial heatup complete, capturing initial batch of images")
+                self._heating_up = False
+                self._initial_heatup_complete = True
+                self._capture_initial_batch(temps)  # Capture initial batch with heatup parameters
+                return  # Skip further processing until the next timer tick
 
-        # Step 1: Capture the temperatures
-        temps = self.capture_temperatures()
+        # Step 2: If initial heatup is complete, proceed with normal image capture
+        if self._initial_heatup_complete:
+            if self._image_count >= self._image_per_batch:
+                self._image_count = 0  # Reset image counter for new batch
+                self._batch_count += 1
+                self.resample_and_send_parameters()  # Resample parameters for new batch
 
-        # Step 2: Only if temperatures are successfully captured, proceed to capture the image
-        if temps:
-            image_name = f"batch-{self._batch_count}_image-{self._image_count}.jpg"
+            # Step 3: Capture the temperatures
+            temps = self.capture_temperatures()
+
+            # Step 4: Only if temperatures are successfully captured, proceed to capture the image
+            if temps:
+                image_name = f"batch-{self._batch_count}_image-{self._image_count}.jpg"
+                image_path = self.capture_image(image_name)
+
+                if image_path:
+                    # Bundle data into a dictionary and pass to log_snapshot
+                    snapshot_data = {
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],  # High-precision timestamp
+                        "image_name": image_name,
+                        "image_path": image_path,
+                        "target_hotend": temps['target_hotend'],
+                        "hotend": temps['hotend'],
+                        "target_bed": temps['target_bed'],
+                        "bed": temps['bed'],
+                        # Include current parameters for the batch
+                        "flow_rate": self.current_parameters.get('flow_rate'),
+                        "lateral_speed": self.current_parameters.get('lateral_speed'),
+                        "z_offset": self.current_parameters.get('z_offset'),
+                        "target_hotend_temp": self.current_parameters.get('hotend_temp')
+                    }
+                    self.log_snapshot(snapshot_data)
+                    self._image_count += 1
+
+    def _is_heating_complete(self, temps):
+        # Check if both hotend and bed have reached their target temperatures
+        hotend_reached = abs(temps['hotend'] - temps['target_hotend']) < 1.0  # Tolerance of 1°C
+        bed_reached = abs(temps['bed'] - temps['target_bed']) < 1.0  # Tolerance of 1°C
+        return hotend_reached and bed_reached
+
+    def _capture_initial_batch(self, temps):
+        # Capture one batch of images with the initial heatup parameters
+        self._logger.info("Capturing initial batch of images with heatup parameters")
+        for i in range(self._image_per_batch):
+            image_name = f"batch-{self._batch_count}_image-{i}.jpg"
             image_path = self.capture_image(image_name)
 
             if image_path:
@@ -80,14 +126,14 @@ class PmlOctoPrinter(octoprint.plugin.StartupPlugin, octoprint.plugin.EventHandl
                     "hotend": temps['hotend'],
                     "target_bed": temps['target_bed'],
                     "bed": temps['bed'],
-                    # Include current parameters for the batch
+                    # Include initial heatup parameters
                     "flow_rate": self.current_parameters.get('flow_rate'),
                     "lateral_speed": self.current_parameters.get('lateral_speed'),
                     "z_offset": self.current_parameters.get('z_offset'),
                     "target_hotend_temp": self.current_parameters.get('hotend_temp')
                 }
                 self.log_snapshot(snapshot_data)
-                self._image_count += 1
+        self._logger.info("Initial batch of images captured")
 
     def resample_and_send_parameters(self):
         # Step 4.1: Resample each parameter from specified ranges
