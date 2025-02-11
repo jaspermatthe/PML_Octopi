@@ -60,7 +60,7 @@ command = [
     "--perimeters", str(perimeters),  # Number of external perimeter walls
 
     # BED TEMPERATURE
-    "--bed-temperature", str(bed_temperature),  # Set bed temperature
+    "--first-layer-bed-temperature", str(bed_temperature),  # Set bed temperature
 
     # OUTPUT
     "--output", output_gcode_path,  # Specify the output G-code file
