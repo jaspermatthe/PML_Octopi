@@ -1,4 +1,5 @@
 import os
+import subprocess
 import random
 import csv
 import requests
@@ -18,6 +19,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
     def on_after_startup(self):
         # This method is called when OctoPrint starts up
         self._logger.info("PmlOctoPrinterFiveConfig started!")
+        self._set_camera_focus()
         self._timer = None
         self._image_per_batch = 100  # Number of images per batch
         self._image_count = 0
@@ -26,7 +28,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
             'flow_rate': 100,  # Default flow rate
             'lateral_speed': 100,  # Default lateral speed
             'z_offset': 0.0,  # Default z-offset
-            'hotend_temp': 215  # Default hotend temperature
+            'hotend_temp': 215,  # Default hotend temperature
+            'bed_temp': 60  # Default bed temperature
         }
         self._heating_up = False  # Track if the printer is heating up
         self._initial_heatup_complete = False  # Track if initial heatup is complete
@@ -36,6 +39,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
     def on_event(self, event, payload):
         if event == Events.CONNECTED:
             self._logger.info("Printer connected event detected")
+            self._set_camera_focus()
             filename = "3D_benchy.gcode"  # File name in OctoPrint's local storage
             self.send_gcode_file(filename)
 
@@ -46,12 +50,33 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
             self._image_count = 0  # Reset the image counter on each print start
             self._batch_count = 0  # Reset the batch counter
             self._parameter_to_sample = None  # Reset parameter to sample
+            self._set_bed_temperature()  # Set bed temperature to 60°C
             self.start_timer(0.4)  # Start the timer to repeat every 0.4 s (2.5 Hz)
 
         elif event == Events.PRINT_DONE or event == Events.PRINT_FAILED:
             self._logger.info("Print finished or failed, stopping image capture")
             if self._timer:
                 self._timer.cancel()
+
+    def _set_camera_focus(self):
+        # Disable autofocus
+        try:
+            subprocess.run(["v4l2-ctl", "-d", "/dev/video0", "-c", "focus_automatic_continuous=0"], check=True)
+            self._logger.info("Autofocus disabled successfully.")
+        except subprocess.CalledProcessError as e:
+            self._logger.error(f"Failed to disable autofocus: {e}")
+
+        # Set manual focus value
+        try:
+            subprocess.run(["v4l2-ctl", "-d", "/dev/video0", "-c", "focus_absolute=390"], check=True)
+            self._logger.info("Manual focus set to 390 successfully.")
+        except subprocess.CalledProcessError as e:
+            self._logger.error(f"Failed to set manual focus: {e}")
+
+    def _set_bed_temperature(self):
+        # Set bed temperature to 60°C
+        self._printer.commands(f"M140 S{self.current_parameters['bed_temp']}")  # Set bed temperature
+        self._logger.info(f"Bed temperature set to {self.current_parameters['bed_temp']}°C.")
 
     def send_gcode_file(self, filename):
         # Ensure the file is in OctoPrint's local storage
@@ -106,7 +131,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                         "flow_rate": self.current_parameters.get('flow_rate'),
                         "lateral_speed": self.current_parameters.get('lateral_speed'),
                         "z_offset": self.current_parameters.get('z_offset'),
-                        "target_hotend_temp": self.current_parameters.get('hotend_temp')
+                        "target_hotend_temp": self.current_parameters.get('hotend_temp'),
+                        "target_bed_temp": self.current_parameters.get('bed_temp')
                     }
                     self.log_snapshot(snapshot_data)
                     self._image_count += 1
@@ -138,7 +164,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                     "flow_rate": self.current_parameters.get('flow_rate'),
                     "lateral_speed": self.current_parameters.get('lateral_speed'),
                     "z_offset": self.current_parameters.get('z_offset'),
-                    "target_hotend_temp": self.current_parameters.get('hotend_temp')
+                    "target_hotend_temp": self.current_parameters.get('hotend_temp'),
+                    "target_bed_temp": self.current_parameters.get('bed_temp')
                 }
                 self.log_snapshot(snapshot_data)
         self._logger.info("Initial batch of 100 images captured")
@@ -236,7 +263,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                 if not log_exists:
                     # If the log file doesn't exist, write the header first
                     writer.writerow(["Timestamp", "Image Name", "Image Path", "Target Hotend", "Hotend", "Target Bed", "Bed",
-                                     "Flow Rate", "Lateral Speed", "Z Offset", "Target Hotend Temperature"])
+                                     "Flow Rate", "Lateral Speed", "Z Offset", "Target Hotend Temperature", "Target Bed Temperature"])
                     self._logger.info("Created new log file with headers.")
 
                 # Log the data from the dictionary
@@ -251,7 +278,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                     snapshot_data['flow_rate'],
                     snapshot_data['lateral_speed'],
                     snapshot_data['z_offset'],
-                    snapshot_data['target_hotend_temp']
+                    snapshot_data['target_hotend_temp'],
+                    snapshot_data['target_bed_temp']
                 ])
                 self._logger.info(f"Logged: {snapshot_data['timestamp']}, {snapshot_data['image_name']}, {snapshot_data['target_hotend']}, {snapshot_data['hotend']}")
         except IOError as e:
