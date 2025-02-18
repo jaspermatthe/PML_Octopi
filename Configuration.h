@@ -1843,8 +1843,8 @@
 #if EITHER(AUTO_BED_LEVELING_LINEAR, AUTO_BED_LEVELING_BILINEAR)
 
   // Set the number of grid points per dimension.
-  #define GRID_MAX_POINTS_X 7
-  #define GRID_MAX_POINTS_Y 7
+  #define GRID_MAX_POINTS_X 8
+  #define GRID_MAX_POINTS_Y 5
 
   // Probe along the Y axis, advancing X after each column
   //#define PROBE_Y_FIRST
