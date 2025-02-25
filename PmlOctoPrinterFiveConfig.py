@@ -36,6 +36,12 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         self._parameter_to_sample = None  # Track which parameter is being sampled
         self._default_parameters = self.current_parameters.copy()  # Store default parameters
 
+        # Create the print0 directory if it doesn't exist
+        self._print0_dir = "/media/sdcard/snapshots/print0"
+        if not os.path.exists(self._print0_dir):
+            os.makedirs(self._print0_dir)
+            self._logger.info(f"Created directory: {self._print0_dir}")
+
     def on_event(self, event, payload):
         if event == Events.CONNECTED:
             self._logger.info("Printer connected event detected")
@@ -69,8 +75,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
 
         # Set manual focus value
         try:
-            subprocess.run(["v4l2-ctl", "-d", "/dev/video0", "-c", "focus_absolute=390"], check=True)
-            self._logger.info("Manual focus set to 390 successfully.")
+            subprocess.run(["v4l2-ctl", "-d", "/dev/video0", "-c", "focus_absolute=400"], check=True)
+            self._logger.info("Manual focus set to 400 successfully.")
         except subprocess.CalledProcessError as e:
             self._logger.error(f"Failed to set manual focus: {e}")
 
@@ -115,25 +121,25 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
 
             # Step 4: Only if temperatures are successfully captured and nozzle is at target temp, proceed to capture the image
             if temps and self._is_nozzle_at_target_temp(temps):
-                image_name = f"batch-{self._batch_count}_image-{self._image_count}.jpg"
-                image_path = self.capture_image(image_name)
+                image_name = f"image-{self._image_count}.jpg"
+                image_path = os.path.join(self._print0_dir, image_name)
+                image_path = self.capture_image(image_name, image_path)
 
                 if image_path:
                     # Bundle data into a dictionary and pass to log_snapshot
                     snapshot_data = {
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],  # High-precision timestamp
-                        "image_name": image_name,
-                        "image_path": image_path,
+                        "img_path": image_path,
+                        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),  # ISO 8601 timestamp
+                        "flow_rate": self.current_parameters.get('flow_rate'),
+                        "feed_rate": self.current_parameters.get('lateral_speed'),  # Feed rate = lateral speed
+                        "z_offset": self.current_parameters.get('z_offset'),
                         "target_hotend": temps['target_hotend'],
                         "hotend": temps['hotend'],
-                        "target_bed": temps['target_bed'],
                         "bed": temps['bed'],
-                        # Include current parameters for the batch
-                        "flow_rate": self.current_parameters.get('flow_rate'),
-                        "lateral_speed": self.current_parameters.get('lateral_speed'),
-                        "z_offset": self.current_parameters.get('z_offset'),
-                        "target_hotend_temp": self.current_parameters.get('hotend_temp'),
-                        "target_bed_temp": self.current_parameters.get('bed_temp')
+                        "nozzle_tip_x": 0,  # Placeholder for nozzle tip X position
+                        "nozzle_tip_y": 0,  # Placeholder for nozzle tip Y position
+                        "img_num": self._image_count,
+                        "print_id": 0  # Single print, so print_id is always 0
                     }
                     self.log_snapshot(snapshot_data)
                     self._image_count += 1
@@ -156,25 +162,25 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         for i in range(self._image_per_batch):
             # Check if nozzle is at target temperature before capturing each image
             if self._is_nozzle_at_target_temp(temps):
-                image_name = f"batch-{self._batch_count}_image-{i}.jpg"
-                image_path = self.capture_image(image_name)
+                image_name = f"image-{i}.jpg"
+                image_path = os.path.join(self._print0_dir, image_name)
+                image_path = self.capture_image(image_name, image_path)
 
                 if image_path:
                     # Bundle data into a dictionary and pass to log_snapshot
                     snapshot_data = {
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],  # High-precision timestamp
-                        "image_name": image_name,
-                        "image_path": image_path,
+                        "img_path": image_path,
+                        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),  # ISO 8601 timestamp
+                        "flow_rate": self.current_parameters.get('flow_rate'),
+                        "feed_rate": self.current_parameters.get('lateral_speed'),  # Feed rate = lateral speed
+                        "z_offset": self.current_parameters.get('z_offset'),
                         "target_hotend": temps['target_hotend'],
                         "hotend": temps['hotend'],
-                        "target_bed": temps['target_bed'],
                         "bed": temps['bed'],
-                        # Include default parameters
-                        "flow_rate": self.current_parameters.get('flow_rate'),
-                        "lateral_speed": self.current_parameters.get('lateral_speed'),
-                        "z_offset": self.current_parameters.get('z_offset'),
-                        "target_hotend_temp": self.current_parameters.get('hotend_temp'),
-                        "target_bed_temp": self.current_parameters.get('bed_temp')
+                        "nozzle_tip_x": 0,  # Placeholder for nozzle tip X position
+                        "nozzle_tip_y": 0,  # Placeholder for nozzle tip Y position
+                        "img_num": i,
+                        "print_id": 0  # Single print, so print_id is always 0
                     }
                     self.log_snapshot(snapshot_data)
             else:
@@ -238,27 +244,20 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
             self._logger.error(f"Error retrieving temperature data: {e}")
             return None
 
-    def capture_image(self, image_name):
+    def capture_image(self, image_name, image_path):
         webcam_url = "http://10.18.2.98/webcam/?action=snapshot"  # Webcam snapshot URL
-        save_dir = "/media/sdcard/snapshots"  # Save location directory on SD card
-        save_path = os.path.join(save_dir, image_name)  # Full path to save the image
-
-        # Create directory if it doesn't exist
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-            self._logger.info(f"Created snapshot directory: {save_dir}")
 
         try:
             response = requests.get(webcam_url)
             response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
             self._logger.info("Image captured successfully.")
 
-            # Save the image to the SD card
-            with open(save_path, "wb") as f:
+            # Save the image to the specified path
+            with open(image_path, "wb") as f:
                 f.write(response.content)
-            self._logger.info(f"Snapshot saved to {save_path}")
+            self._logger.info(f"Snapshot saved to {image_path}")
 
-            return save_path  # Return the path where the image was saved
+            return image_path  # Return the path where the image was saved
         except (requests.RequestException, IOError) as e:
             self._logger.error(f"Error capturing or saving snapshot: {e}")
             return None
@@ -273,26 +272,29 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                 writer = csv.writer(file)
                 if not log_exists:
                     # If the log file doesn't exist, write the header first
-                    writer.writerow(["Timestamp", "Image Name", "Image Path", "Target Hotend", "Hotend", "Target Bed", "Bed",
-                                     "Flow Rate", "Lateral Speed", "Z Offset", "Target Hotend Temperature", "Target Bed Temperature"])
+                    writer.writerow([
+                        "img_path", "timestamp", "flow_rate", "feed_rate", "z_offset",
+                        "target_hotend", "hotend", "bed", "nozzle_tip_x", "nozzle_tip_y",
+                        "img_num", "print_id"
+                    ])
                     self._logger.info("Created new log file with headers.")
 
                 # Log the data from the dictionary
                 writer.writerow([
+                    snapshot_data['img_path'],
                     snapshot_data['timestamp'],
-                    snapshot_data['image_name'],
-                    snapshot_data['image_path'],
+                    snapshot_data['flow_rate'],
+                    snapshot_data['feed_rate'],
+                    snapshot_data['z_offset'],
                     snapshot_data['target_hotend'],
                     snapshot_data['hotend'],
-                    snapshot_data['target_bed'],
                     snapshot_data['bed'],
-                    snapshot_data['flow_rate'],
-                    snapshot_data['lateral_speed'],
-                    snapshot_data['z_offset'],
-                    snapshot_data['target_hotend_temp'],
-                    snapshot_data['target_bed_temp']
+                    snapshot_data['nozzle_tip_x'],
+                    snapshot_data['nozzle_tip_y'],
+                    snapshot_data['img_num'],
+                    snapshot_data['print_id']
                 ])
-                self._logger.info(f"Logged: {snapshot_data['timestamp']}, {snapshot_data['image_name']}, {snapshot_data['target_hotend']}, {snapshot_data['hotend']}")
+                self._logger.info(f"Logged: {snapshot_data['timestamp']}, {snapshot_data['img_path']}")
         except IOError as e:
             self._logger.error(f"Error logging snapshot to {log_file}: {e}")
 
