@@ -1,6 +1,6 @@
 import subprocess
 import os
-import random  # Import the random module
+import random
 
 # Path to your PrusaSlicer AppImage
 prusa_slicer_path = os.path.expanduser("/home/raspberry/Documents/PrusaSlicer-2.7.3+linux-armv7l-GTK2-202403280945.AppImage")
@@ -13,6 +13,17 @@ if not os.path.exists(prusa_slicer_path):
 if not os.path.exists(stl_file_path):
     raise FileNotFoundError(f"STL file not found at {stl_file_path}")
 
+# Prompt user to choose between PLA and PETG
+material_choice = input("Choose material (PLA/PETG): ").strip().upper()
+
+# Set temperatures based on user choice
+if material_choice == "PETG":
+    bed_temperature = 85
+    hotend_temperature = 240
+elif material_choice == "PLA":
+    bed_temperature = 60
+    hotend_temperature = 215
+
 # Parameters
 rotation = random.randint(0, 360)  # Random rotation
 scale = random.uniform(0.8, 2.0)  # Scale between 0.8 and 2.0
@@ -22,11 +33,9 @@ infill_patterns = [
     "line", "concentric", "honeycomb", "3dhoneycomb", 
     "gyroid", "hilbertcurve", "archimedeanchords", "octagramspiral"
 ]
-infill_pattern = random.choice(infill_patterns)  # Random infill pattern
+infill_pattern = "honeycomb"  # random.choice(infill_patterns)
 infill_density = random.uniform(0.0, 0.40)  # Infill density between 0 and 40%
 perimeters = random.randint(2, 4)  # Perimeters between 2 and 4
-bed_temperature = 60  # Bed temperature
-hotend_temperature = 200  # Hotend temperature
 
 # Print sampled parameters
 print(f"Sampled rotation: {rotation} degrees")  
@@ -35,8 +44,8 @@ print(f"Sampled solid layers (top, bottom): {solid_layers}")
 print(f"Sampled infill pattern: {infill_pattern}")
 print(f"Sampled infill density: {infill_density:.2f}")
 print(f"Sampled perimeters: {perimeters}")
-print(f"Sampled bed temperature: {bed_temperature}°C")
-print(f"Sampled hotend temperature: {hotend_temperature}°C")
+print(f"Bed temperature: {bed_temperature}°C")
+print(f"Hotend temperature: {hotend_temperature}°C")
 
 # Centering coordinates for MK3/S/+ print volume
 center_x = 125  # Half of 250 mm

@@ -45,6 +45,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
 
         elif event == Events.PRINT_STARTED:
             self._logger.info("Print started event detected")
+            self._set_camera_focus()
             self._heating_up = True  # Printer is heating up
             self._initial_heatup_complete = False  # Reset initial heatup flag
             self._image_count = 0  # Reset the image counter on each print start
