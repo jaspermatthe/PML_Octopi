@@ -11,7 +11,7 @@ from octoprint.filemanager import FileDestinations
 
 __plugin_name__ = "PmlOctoPrinterFiveConfig"
 __plugin_version__ = "1.0.0"
-__plugin_description__ = "A plugin to send G-code files for printing and capture images during the print."
+__plugin_description__ = "5 parameter plugin to send G-code files for printing and capture images during the print."
 __plugin_pythoncompat__ = ">=3.7,<4"
 
 class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.EventHandlerPlugin):
@@ -28,8 +28,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
             'flow_rate': 100,  # Default flow rate
             'lateral_speed': 100,  # Default lateral speed
             'z_offset': 0.0,  # Default z-offset
-            'hotend_temp': 215,  # Default hotend temperature
-            'bed_temp': 60  # Default bed temperature
+            'hotend_temp': 240,  # Default hotend temperature PETG
+            'bed_temp': 85  # Default bed temperature PETG
         }
         self._heating_up = False  # Track if the printer is heating up
         self._initial_heatup_complete = False  # Track if initial heatup is complete
@@ -113,8 +113,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
             # Step 3: Capture the temperatures
             temps = self.capture_temperatures()
 
-            # Step 4: Only if temperatures are successfully captured, proceed to capture the image
-            if temps:
+            # Step 4: Only if temperatures are successfully captured and nozzle is at target temp, proceed to capture the image
+            if temps and self._is_nozzle_at_target_temp(temps):
                 image_name = f"batch-{self._batch_count}_image-{self._image_count}.jpg"
                 image_path = self.capture_image(image_name)
 
@@ -137,6 +137,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                     }
                     self.log_snapshot(snapshot_data)
                     self._image_count += 1
+            else:
+                self._logger.info("Nozzle temperature not at target, skipping image capture.")
 
     def _is_heating_complete(self, temps):
         # Check if both hotend and bed have reached their target temperatures
@@ -144,31 +146,39 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         bed_reached = abs(temps['bed'] - temps['target_bed']) < 1.0  # Tolerance of 1°C
         return hotend_reached and bed_reached
 
+    def _is_nozzle_at_target_temp(self, temps):
+        # Check if the nozzle temperature is within ±1°C of the target temperature
+        return abs(temps['hotend'] - temps['target_hotend']) <= 1.0
+
     def _capture_initial_batch(self, temps):
         # Capture 100 images with default parameters
         self._logger.info("Capturing initial batch of 100 images with default parameters")
         for i in range(self._image_per_batch):
-            image_name = f"batch-{self._batch_count}_image-{i}.jpg"
-            image_path = self.capture_image(image_name)
+            # Check if nozzle is at target temperature before capturing each image
+            if self._is_nozzle_at_target_temp(temps):
+                image_name = f"batch-{self._batch_count}_image-{i}.jpg"
+                image_path = self.capture_image(image_name)
 
-            if image_path:
-                # Bundle data into a dictionary and pass to log_snapshot
-                snapshot_data = {
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],  # High-precision timestamp
-                    "image_name": image_name,
-                    "image_path": image_path,
-                    "target_hotend": temps['target_hotend'],
-                    "hotend": temps['hotend'],
-                    "target_bed": temps['target_bed'],
-                    "bed": temps['bed'],
-                    # Include default parameters
-                    "flow_rate": self.current_parameters.get('flow_rate'),
-                    "lateral_speed": self.current_parameters.get('lateral_speed'),
-                    "z_offset": self.current_parameters.get('z_offset'),
-                    "target_hotend_temp": self.current_parameters.get('hotend_temp'),
-                    "target_bed_temp": self.current_parameters.get('bed_temp')
-                }
-                self.log_snapshot(snapshot_data)
+                if image_path:
+                    # Bundle data into a dictionary and pass to log_snapshot
+                    snapshot_data = {
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],  # High-precision timestamp
+                        "image_name": image_name,
+                        "image_path": image_path,
+                        "target_hotend": temps['target_hotend'],
+                        "hotend": temps['hotend'],
+                        "target_bed": temps['target_bed'],
+                        "bed": temps['bed'],
+                        # Include default parameters
+                        "flow_rate": self.current_parameters.get('flow_rate'),
+                        "lateral_speed": self.current_parameters.get('lateral_speed'),
+                        "z_offset": self.current_parameters.get('z_offset'),
+                        "target_hotend_temp": self.current_parameters.get('hotend_temp'),
+                        "target_bed_temp": self.current_parameters.get('bed_temp')
+                    }
+                    self.log_snapshot(snapshot_data)
+            else:
+                self._logger.info("Nozzle temperature not at target, skipping image capture.")
         self._logger.info("Initial batch of 100 images captured")
 
     def _sample_next_parameter(self):
