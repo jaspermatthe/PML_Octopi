@@ -81,7 +81,6 @@ command = [
     "--first-layer-temperature", str(hotend_temperature),  # Set hotend temp
     "--output", output_gcode_path,  # Output G-code file
     "--start-gcode", start_gcode,  # Inject optimized start G-code
-    "--support-material",  # Enable support material generation
     stl_file_path
 ]
 
