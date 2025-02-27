@@ -165,7 +165,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         for _ in range(self._initial_image_per_batch):
             # Check if nozzle is at target temperature before capturing each image
             if self._is_nozzle_at_target_temp(temps):
-                image_name = f"image-{i}.jpg"
+                image_name = f"image-{self._image_count}.jpg"
                 image_path = os.path.join(self._print0_dir, image_name)
                 image_path = self.capture_image(image_name, image_path)
 
