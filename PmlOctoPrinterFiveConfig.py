@@ -24,6 +24,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         self._initial_image_per_batch = 500  # Number of images for the initial batch
         self._image_per_batch = 100  # Number of images per batch after the initial batch
         self._image_count = 0
+        self._batch_image_count = 0
         self._batch_count = 0
         self.current_parameters = {
             'flow_rate': 100,  # Default flow rate
@@ -56,6 +57,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
             self._heating_up = True  # Printer is heating up
             self._initial_heatup_complete = False  # Reset initial heatup flag
             self._image_count = 0  # Reset the image counter on each print start
+            self._batch_image_count = 0
             self._batch_count = 0  # Reset the batch counter
             self._parameter_to_sample = None  # Reset parameter to sample
             self._set_bed_temperature()  # Set bed temperature to 60°C
@@ -112,8 +114,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
 
         # Step 2: If initial heatup is complete, proceed with normal image capture
         if self._initial_heatup_complete:
-            if self._image_count >= self._image_per_batch:
-                # self._image_count = 0  # Reset image counter for new batch
+            if self._batch_image_count >= self._image_per_batch:
+                self._batch_image_count = 0  # Reset image counter for new batch
                 self._batch_count += 1
                 self._sample_next_parameter()  # Sample the next parameter
 
@@ -160,7 +162,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
     def _capture_initial_batch(self, temps):
         # Capture 500 images with default parameters
         self._logger.info("Capturing initial batch of 500 images with default parameters")
-        for i in range(self._initial_image_per_batch):
+        for _ in range(self._initial_image_per_batch):
             # Check if nozzle is at target temperature before capturing each image
             if self._is_nozzle_at_target_temp(temps):
                 image_name = f"image-{i}.jpg"
@@ -180,10 +182,11 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                         "bed": temps['bed'],
                         "nozzle_tip_x": 0,  # Placeholder for nozzle tip X position
                         "nozzle_tip_y": 0,  # Placeholder for nozzle tip Y position
-                        "img_num": i,
+                        "img_num": self._image_count,
                         "print_id": 0  # Single print, so print_id is always 0
                     }
                     self.log_snapshot(snapshot_data)
+                    self._image_count += 1
             else:
                 self._logger.info("Nozzle temperature not at target, skipping image capture.")
         self._logger.info("Initial batch of 500 images captured")
