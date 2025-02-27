@@ -112,7 +112,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         # Step 2: If initial heatup is complete, proceed with normal image capture
         if self._initial_heatup_complete:
             if self._image_count >= self._image_per_batch:
-                self._image_count = 0  # Reset image counter for new batch
+                # self._image_count = 0  # Reset image counter for new batch
                 self._batch_count += 1
                 self._sample_next_parameter()  # Sample the next parameter
 
@@ -263,7 +263,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
             return None
 
     def log_snapshot(self, snapshot_data):
-        log_file = "/media/sdcard/snapshots/print_log_full.csv"
+        log_file = "/media/sdcard/snapshots/print0/print_log_full.csv"
         log_exists = os.path.exists(log_file)
 
         try:

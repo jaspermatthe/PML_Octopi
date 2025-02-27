@@ -34,7 +34,7 @@ infill_patterns = [
     "gyroid", "hilbertcurve", "archimedeanchords", "octagramspiral"
 ]
 infill_pattern = "honeycomb"  # random.choice(infill_patterns)
-infill_density = random.uniform(0.0, 0.40)  # Infill density between 0 and 40%
+infill_density = random.uniform(0.20, 0.40)  # Infill density between 0 and 40%
 perimeters = random.randint(2, 4)  # Perimeters between 2 and 4
 
 # Print sampled parameters
@@ -59,6 +59,11 @@ G28  ; Home all axes
 G1 Z5 F5000  ; Lift nozzle
 M190 S{bed_temperature}  ; Wait for bed temp
 M109 S{hotend_temperature}  ; Wait for hotend temp
+G1 X0 Z0.6 Y-3.0 F1000.0 ; go outside print area for intro line
+G92 E0.0
+G1 X60.0 E9.0 F1000.0 ; intro line
+G1 X100.0 E12.5 F1000.0 ; intro line
+G92 E0.0
 G21  ; Set units to millimeters
 G90  ; Use absolute positioning
 M82  ; Use absolute extrusion
