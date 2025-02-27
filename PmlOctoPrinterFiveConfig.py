@@ -217,7 +217,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         elif self._parameter_to_sample == 'z_offset':
             self.current_parameters['z_offset'] = random.uniform(-0.08, 0.32)
         elif self._parameter_to_sample == 'hotend_temp':
-            self.current_parameters['hotend_temp'] = random.uniform(180, 230)
+            self.current_parameters['hotend_temp'] = random.uniform(210, 250)
 
         # Send the new parameter to the printer
         self._send_parameters_to_printer()
