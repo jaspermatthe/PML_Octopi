@@ -231,3 +231,7 @@ If you encounter this error code in the octroprint logs:
 Disconnect printer, select different baud rate, attempt to reconnect, then disconnect and set back to default 250000 baud rate. This should fix the issue. This is, if the USB serial cable works fine. You can verify this by trying to reproduce the error with a different USB cable.
 
 
+## 3. How to run prints
+1. use 'cli_prusa_slicer_test.py' to slice your .STL model with randomly selected parameters
+2. use 'GCodeUploadToOctoprint.py' to send .GCODE files to printer server
+3. ensure 'PmlOctoPrinterFiveConfig.py' plugin is enabled in Octoprint. Then restart Octoprint and print should start automatically.
