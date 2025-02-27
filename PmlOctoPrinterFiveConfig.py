@@ -21,14 +21,15 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         self._logger.info("PmlOctoPrinterFiveConfig started!")
         self._set_camera_focus()
         self._timer = None
-        self._image_per_batch = 100  # Number of images per batch
+        self._initial_image_per_batch = 500  # Number of images for the initial batch
+        self._image_per_batch = 100  # Number of images per batch after the initial batch
         self._image_count = 0
         self._batch_count = 0
         self.current_parameters = {
             'flow_rate': 100,  # Default flow rate
             'lateral_speed': 100,  # Default lateral speed
             'z_offset': 0.0,  # Default z-offset
-            'hotend_temp': 240,  # Default hotend temperature PETG
+            'hotend_temp': 230,  # Default hotend temperature PETG
             'bed_temp': 85  # Default bed temperature PETG
         }
         self._heating_up = False  # Track if the printer is heating up
@@ -157,9 +158,9 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         return abs(temps['hotend'] - temps['target_hotend']) <= 1.0
 
     def _capture_initial_batch(self, temps):
-        # Capture 100 images with default parameters
-        self._logger.info("Capturing initial batch of 100 images with default parameters")
-        for i in range(self._image_per_batch):
+        # Capture 500 images with default parameters
+        self._logger.info("Capturing initial batch of 500 images with default parameters")
+        for i in range(self._initial_image_per_batch):
             # Check if nozzle is at target temperature before capturing each image
             if self._is_nozzle_at_target_temp(temps):
                 image_name = f"image-{i}.jpg"
@@ -185,7 +186,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                     self.log_snapshot(snapshot_data)
             else:
                 self._logger.info("Nozzle temperature not at target, skipping image capture.")
-        self._logger.info("Initial batch of 100 images captured")
+        self._logger.info("Initial batch of 500 images captured")
 
     def _sample_next_parameter(self):
         # Randomly sample one parameter at a time

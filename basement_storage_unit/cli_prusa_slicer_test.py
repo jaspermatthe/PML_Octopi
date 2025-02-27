@@ -19,7 +19,7 @@ material_choice = input("Choose material (PLA/PETG): ").strip().upper()
 # Set temperatures based on user choice
 if material_choice == "PETG":
     bed_temperature = 85
-    hotend_temperature = 240
+    hotend_temperature = 230
 elif material_choice == "PLA":
     bed_temperature = 60
     hotend_temperature = 215
@@ -51,23 +51,24 @@ print(f"Hotend temperature: {hotend_temperature}°C")
 center_x = 125  # Half of 250 mm
 center_y = 105  # Half of 210 mm
 
-# Custom Start G-code (optimized heating)
+# Custom Start G-code (optimized heating with purge line)
 start_gcode = f"""
-M140 S{bed_temperature}  ; Set bed temp (non-blocking)
-M104 S{hotend_temperature}  ; Set hotend temp (non-blocking)
-G28  ; Home all axes
-G1 Z5 F5000  ; Lift nozzle
-M190 S{bed_temperature}  ; Wait for bed temp
-M109 S{hotend_temperature}  ; Wait for hotend temp
-G1 X0 Z0.6 Y-3.0 F1000.0 ; go outside print area for intro line
-G92 E0.0
-G1 X60.0 E9.0 F1000.0 ; intro line
-G1 X100.0 E12.5 F1000.0 ; intro line
-G92 E0.0
-G21  ; Set units to millimeters
-G90  ; Use absolute positioning
-M82  ; Use absolute extrusion
-G92 E0  ; Reset extruder position
+G90 ; use absolute coordinates
+M83 ; extruder relative mode
+M140 S{bed_temperature} ; set bed temp
+M104 S{hotend_temperature} ; set hotend temp
+
+G28 ; home all axes
+G1 X0 Z0.6 Y-3.0 F1000.0 ; move outside print area for intro line
+M109 S{hotend_temperature} ; wait for hotend temp
+M190 S{bed_temperature} ; wait for bed temp
+
+G92 E0.0 ; reset extruder position
+G1 X60.0 E9.0 F1000.0 ; draw the first line (extrude 9mm)
+G1 X100.0 E12.5 F1000.0 ; draw the second line (extrude 3.5mm more)
+G92 E0.0 ; reset extruder position
+G90 ; use absolute coordinates
+M82 ; use absolute extrusion
 """
 
 # Command to run PrusaSlicer
