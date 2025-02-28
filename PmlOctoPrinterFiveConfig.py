@@ -39,7 +39,11 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         self._default_parameters = self.current_parameters.copy()  # Store default parameters
 
         # Create the print0 directory if it doesn't exist
-        self._print0_dir = "/media/sdcard/snapshots/print0"
+        self._print0_dir = "/media/sdcard/snapshots"
+        existing_folders = [d for d in os.listdir(self._print0_dir) if d.startswith("print") and d[5:].isdigit()]
+        next_index = max(map(int, [d[5:] for d in existing_folders]), default=-1) + 1
+        self._print0_dir = f"/media/sdcard/snapshots/print{next_index}"
+
         if not os.path.exists(self._print0_dir):
             os.makedirs(self._print0_dir)
             self._logger.info(f"Created directory: {self._print0_dir}")
@@ -78,8 +82,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
 
         # Set manual focus value
         try:
-            subprocess.run(["v4l2-ctl", "-d", "/dev/video0", "-c", "focus_absolute=400"], check=True)
-            self._logger.info("Manual focus set to 400 successfully.")
+            subprocess.run(["v4l2-ctl", "-d", "/dev/video0", "-c", "focus_absolute=390"], check=True)
+            self._logger.info("Manual focus set to 390 successfully.")
         except subprocess.CalledProcessError as e:
             self._logger.error(f"Failed to set manual focus: {e}")
 
@@ -110,6 +114,8 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                 self._heating_up = False
                 self._initial_heatup_complete = True
                 self._capture_initial_batch(temps)  # Capture initial batch with default parameters
+                # Start resampling process after the initial batch
+                self._sample_next_parameter()
                 return  # Skip further processing until the next timer tick
 
         # Step 2: If initial heatup is complete, proceed with normal image capture
@@ -142,10 +148,15 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                         "nozzle_tip_x": 0,  # Placeholder for nozzle tip X position
                         "nozzle_tip_y": 0,  # Placeholder for nozzle tip Y position
                         "img_num": self._image_count,
-                        "print_id": 0  # Single print, so print_id is always 0
+                        "print_id": 0,  # Single print, so print_id is always 0
+                        "flow_rate_class": '',
+                        "feed_rate_class": '',
+                        "z_offset_class": '',
+                        "hotend_class": ''
                     }
                     self.log_snapshot(snapshot_data)
                     self._image_count += 1
+                    self._batch_image_count += 1  # Increment batch image counter
             else:
                 self._logger.info("Nozzle temperature not at target, skipping image capture.")
 
@@ -194,40 +205,55 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
     def _sample_next_parameter(self):
         # Randomly sample one parameter at a time
         parameters_to_sample = ['flow_rate', 'lateral_speed', 'z_offset', 'hotend_temp']
-        if self._parameter_to_sample is None:
-            # Start sampling the first parameter
-            self._parameter_to_sample = random.choice(parameters_to_sample)
-        else:
-            # Reset the previously sampled parameter to its default value
-            self.current_parameters[self._parameter_to_sample] = self._default_parameters[self._parameter_to_sample]
-            # Move to the next parameter
-            remaining_parameters = [p for p in parameters_to_sample if p != self._parameter_to_sample]
-            if remaining_parameters:
-                self._parameter_to_sample = random.choice(remaining_parameters)
+        try:
+            if self._parameter_to_sample is None:
+                # Start sampling the first parameter
+                self._parameter_to_sample = random.choice(parameters_to_sample)
+                self._logger.info(f"Sampling started with parameter: {self._parameter_to_sample}")
             else:
-                # All parameters have been sampled
-                self._parameter_to_sample = None
-                return
+                # Reset the previously sampled parameter to its default value
+                self.current_parameters[self._parameter_to_sample] = self._default_parameters[self._parameter_to_sample]
+                self._logger.info(f"Reset parameter {self._parameter_to_sample} to its default value.")
+                # Move to the next parameter
+                remaining_parameters = [p for p in parameters_to_sample if p != self._parameter_to_sample]
+                if remaining_parameters:
+                    self._parameter_to_sample = random.choice(remaining_parameters)
+                    self._logger.info(f"Moved to next parameter: {self._parameter_to_sample}")
+                else:
+                    # All parameters have been sampled
+                    self._parameter_to_sample = None
+                    self._logger.info("All parameters have been sampled.")
+                    return
 
-        # Sample the new parameter
-        if self._parameter_to_sample == 'flow_rate':
-            self.current_parameters['flow_rate'] = random.uniform(20, 200)
-        elif self._parameter_to_sample == 'lateral_speed':
-            self.current_parameters['lateral_speed'] = random.uniform(20, 200)
-        elif self._parameter_to_sample == 'z_offset':
-            self.current_parameters['z_offset'] = random.uniform(-0.08, 0.32)
-        elif self._parameter_to_sample == 'hotend_temp':
-            self.current_parameters['hotend_temp'] = random.uniform(210, 250)
+            # Sample the new parameter
+            if self._parameter_to_sample == 'flow_rate':
+                self.current_parameters['flow_rate'] = random.uniform(20, 200)
+            elif self._parameter_to_sample == 'lateral_speed':
+                self.current_parameters['lateral_speed'] = random.uniform(20, 200)
+            elif self._parameter_to_sample == 'z_offset':
+                self.current_parameters['z_offset'] = random.uniform(-0.08, 0.32)
+            elif self._parameter_to_sample == 'hotend_temp':
+                self.current_parameters['hotend_temp'] = random.uniform(220, 250)  # Adjusted range
 
-        # Send the new parameter to the printer
-        self._send_parameters_to_printer()
+            # Send the new parameter to the printer
+            self._send_parameters_to_printer()
+
+        except Exception as e:
+            self._logger.error(f"Error in _sample_next_parameter: {e}")
 
     def _send_parameters_to_printer(self):
-        # Send the current parameters to the printer
-        self._printer.commands(f"M109 S{self.current_parameters['hotend_temp']}")  # Set hotend temperature
-        self._printer.commands(f"M220 S{self.current_parameters['lateral_speed']}")  # Set lateral speed
-        self._printer.commands(f"M221 S{self.current_parameters['flow_rate']}")  # Set flow rate
-        self._printer.commands(f"M290 Z{self.current_parameters['z_offset']}")  # Set z-offset
+        try:
+            # Send the current parameters to the printer
+            self._printer.commands(f"M109 S{self.current_parameters['hotend_temp']}")  # Set hotend temperature
+            self._logger.info(f"Sent M109 S{self.current_parameters['hotend_temp']} to set hotend temperature.")
+            self._printer.commands(f"M220 S{self.current_parameters['lateral_speed']}")  # Set lateral speed
+            self._logger.info(f"Sent M220 S{self.current_parameters['lateral_speed']} to set lateral speed.")
+            self._printer.commands(f"M221 S{self.current_parameters['flow_rate']}")  # Set flow rate
+            self._logger.info(f"Sent M221 S{self.current_parameters['flow_rate']} to set flow rate.")
+            self._printer.commands(f"M290 Z{self.current_parameters['z_offset']}")  # Set z-offset
+            self._logger.info(f"Sent M290 Z{self.current_parameters['z_offset']} to set z-offset.")
+        except Exception as e:
+            self._logger.error(f"Error in _send_parameters_to_printer: {e}")
 
     def capture_temperatures(self):
         try:
@@ -267,7 +293,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
             return None
 
     def log_snapshot(self, snapshot_data):
-        log_file = "/media/sdcard/snapshots/print0/print_log_full.csv"
+        log_file = os.path.join(self._print0_dir, 'print_log_full.csv')
         log_exists = os.path.exists(log_file)
 
         try:
@@ -279,7 +305,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
                     writer.writerow([
                         "img_path", "timestamp", "flow_rate", "feed_rate", "z_offset",
                         "target_hotend", "hotend", "bed", "nozzle_tip_x", "nozzle_tip_y",
-                        "img_num", "print_id"
+                        "img_num", "print_id", "flow_rate_class", "feed_rate_class", "z_offset_class","hotend_class"
                     ])
                     self._logger.info("Created new log file with headers.")
 

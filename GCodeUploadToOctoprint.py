@@ -10,9 +10,18 @@ try:
     if os.path.exists(destination_path):
         os.remove(destination_path)  # Delete existing file before copying
 
-    # Copy the file (instead of moving)
-    shutil.copy2(source_path, destination_path)  # copy2 preserves metadata
-    print(f"File copied successfully to {destination_path}")
+    # Read the source G-code file and replace any S200 with S230
+    with open(source_path, 'r') as file:
+        gcode_content = file.read()
+    
+    # Replace S200 with S230
+    gcode_content = gcode_content.replace('S200', 'S230')
+
+    # Write the modified content to the destination
+    with open(destination_path, 'w') as file:
+        file.write(gcode_content)
+
+    print(f"File copied and modified successfully to {destination_path}")
 
 except FileNotFoundError:
     print(f"Source file not found: {source_path}")
