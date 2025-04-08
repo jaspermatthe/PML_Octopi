@@ -52,7 +52,7 @@ class PmlOctoPrinterFiveConfig(octoprint.plugin.StartupPlugin, octoprint.plugin.
         if event == Events.CONNECTED:
             self._logger.info("Printer connected event detected")
             self._set_camera_focus()
-            filename = "3D_benchy.gcode"  # File name in OctoPrint's local storage
+            filename = "wall_thin.gcode"  # File name in OctoPrint's local storage
             self.send_gcode_file(filename)
 
         elif event == Events.PRINT_STARTED:

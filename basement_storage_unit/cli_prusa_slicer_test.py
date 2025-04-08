@@ -4,8 +4,8 @@ import random
 
 # Path to your PrusaSlicer AppImage
 prusa_slicer_path = os.path.expanduser("/home/raspberry/Documents/PrusaSlicer-2.7.3+linux-armv7l-GTK2-202403280945.AppImage")
-stl_file_path = "/home/raspberry/thingiscrape/downloads/stls/#3DBenchy_-_The_jolly_3D_printing_torture-test_by_CreativeTools.se/3DBenchy.stl"
-output_gcode_path = "/home/raspberry/STL_GCODE/3D_benchy.gcode"  # Include the .gcode extension
+stl_file_path = "/home/raspberry/thingiscrape/downloads/stls/wall_thin.stl"
+output_gcode_path = "/home/raspberry/STL_GCODE/wall_thin.gcode"  # Include the .gcode extension
 
 # Ensure the paths are correct
 if not os.path.exists(prusa_slicer_path):
@@ -25,16 +25,19 @@ elif material_choice == "PLA":
     hotend_temperature = 215
 
 # Parameters
-rotation = random.randint(0, 360)  # Random rotation
-scale = random.uniform(0.8, 2.0)  # Scale between 0.8 and 2.0
+# rotation = random.randint(0, 360)  # Random rotation
+rotation = 0
+# scale = random.uniform(0.8, 2.0)  # Scale between 0.8 and 2.0
+scale = 0.7
 solid_layers = (random.randint(2, 4), random.randint(2, 4))  # Random solid layers
 infill_patterns = [
     "rectilinear", "grid", "triangles", "stars", "cubic", 
-    "line", "concentric", "honeycomb", "3dhoneycomb", 
+    "line", "concentric", "honeycomb", "3dhoneycomb",
     "gyroid", "hilbertcurve", "archimedeanchords", "octagramspiral"
 ]
 infill_pattern = "honeycomb"  # random.choice(infill_patterns)
-infill_density = random.uniform(0.20, 0.40)  # Infill density between 0 and 40%
+# infill_density = random.uniform(0.20, 0.40)  # Infill density between 0 and 40%
+infill_density = 0.40
 perimeters = random.randint(2, 4)  # Perimeters between 2 and 4
 
 # Print sampled parameters
@@ -49,7 +52,7 @@ print(f"Hotend temperature: {hotend_temperature}°C")
 
 # Centering coordinates for MK3/S/+ print volume
 center_x = 125  # Half of 250 mm
-center_y = 105  # Half of 210 mm
+center_y = 226  # Half of 210 mm
 
 # Custom Start G-code (optimized heating with purge line)
 start_gcode = f"""

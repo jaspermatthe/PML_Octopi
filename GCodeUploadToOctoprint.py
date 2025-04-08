@@ -2,8 +2,8 @@ import shutil
 import os
 
 # Define source and destination paths
-source_path = "/home/raspberry/STL_GCODE/3D_benchy.gcode"  # Include the .gcode extension
-destination_path = "/home/raspberry/.octoprint/uploads/3D_benchy.gcode"
+source_path = "/home/raspberry/STL_GCODE/wall_thin.gcode"  # Include the .gcode extension
+destination_path = "/home/raspberry/.octoprint/uploads/wall_thin.gcode"
 
 try:
     # Check if the file already exists at the destination
