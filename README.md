@@ -134,12 +134,12 @@ You can flash Marlin Firmware to your Prusa MK3S using VsCode and two plugins: A
 [https://marlinfw.org/docs/basics/install.html
 ](https://marlinfw.org/docs/basics/install_platformio.html)
 
-1. download and unzip your desired Marlin Firmware to your computer from the Marlin GitHub: [https://github.com/MarlinFirmware/Marlin](https://github.com/MarlinFirmware/Marlin)
+1. download and unzip your desired Marlin Firmware to your computer from the Marlin GitHub: https://github.com/MarlinFirmware/Marlin/tree/bugfix-2.0.x
 2. Open the Marlin-VERSION folder in VsCode
 3. Install the Auto Build Marlin Plugin in the Plugins tab of VsCode. This should automatically also install the PlatformIO plugin.
 4. Once Auto Build Marlin is installed, there should be a tab for it on the left of VsCode. Click it.
 5. Make sure Auto Build Marlin has the Marlin-VERSION folder opened.
-6. Download the appropriate configuration files from [https://github.com/MarlinFirmware/Configurations/tree/bugfix-2.1.x/config/examples/Prusa/MK3](https://github.com/MarlinFirmware/Configurations/tree/bugfix-2.1.x/config/examples/Prusa/MK3)
+6. Download the appropriate configuration files from https://github.com/MarlinFirmware/Marlin/tree/bugfix-2.0.x
 7. Move the "Configuration.h" and "Configuration_adv.h" files to the "Marlin-VERSION/Marlin" folder, replacing whatever was there by default.
 8. Make sure the thermistor is set "5" for the Prusa MK3s (ATC Semitec 104NT-4-R025H42G)
 
